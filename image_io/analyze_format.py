@@ -559,7 +559,11 @@ def read_analyze_hdr(filename, byte_order:str = None):
             
             #Assume we want join chars together into a string
             if precision == 's':
-                out = out[0].decode('utf-8').strip().strip('\x00')
+                try:
+                    out = out[0].decode('utf-8').strip().strip('\x00')
+                except UnicodeDecodeError:
+                    warnings.warn('Unable to decode characters from byte stream')
+                    out = []
 
             #And that for other datatypes, if we only wanted one, get rid of the
             #outer tuple

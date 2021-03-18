@@ -9,7 +9,7 @@ from madym_interface.utils import local_madym_root
 
 def  run(
     cmd_exe:str = None,
-    FA_names:list = None,
+    T1_vols:list = None,
     FAs:np.array = None,
     signals:np.array = None,
   	TR:float = None,
@@ -42,11 +42,11 @@ def  run(
     Inputs:
         cmd_exe : str = None,
             Path to the C++ executable to be run.
-            One of FA_names or FAs must be set (if neither, the test function will be run on
-        synthetic data). If FA_names given, calculate_T1 will be run, if FA values are given
+            One of T1_vols or FAs must be set (if neither, the test function will be run on
+        synthetic data). If T1_vols given, calculate_T1 will be run, if FA values are given
         calculate_T1_lite will be called. In the _lite case, signals must also be set
 
-        FA_names : list default None, 
+        T1_vols : list default None, 
 			Variable flip angle file names, comma separated (no spaces)
         FAs : np.array default None, 
 		    FAs, either single vector used for all samples, or 2D array, 1 row per sample
@@ -101,8 +101,6 @@ def  run(
      
        "VFA"
     
-     See also: RUN_MADYM, RUN_MADYM_LITE
-    
      Created: 20-Feb-2019
      Author: Michael Berks 
      Email : michael.berks@manchester.ac.uk 
@@ -110,7 +108,7 @@ def  run(
      Copyright: (C) University of Manchester'''
 
     #Parse inputs, check if using full or lite version 
-    use_lite = FA_names is None
+    use_lite = T1_vols is None
 
     if use_lite: 
         if FAs is None:
@@ -148,14 +146,14 @@ def  run(
         use_lite = False
         
         #Set up FA map names
-        nFAs = len(FA_names)
+        nFAs = len(T1_vols)
         if nFAs < 3:
             raise ValueError(
                 'Only {nFAs} FA maps supplied, require at least 3 for T1 fitting'
                 )
 
         #Set VFA files in the options string 
-        fa_str = ','.join(FA_names)
+        fa_str = ','.join(T1_vols)
     
         #Initialise command argument
         cmd_args = [cmd_exe, 
@@ -353,20 +351,20 @@ def test(plot_output=True):
     #Now save the flip-angle data at Analyze images and apply the full
     #volume method
     fa_dir = TemporaryDirectory()
-    FA_names = []
+    T1_vols = []
     for i_fa in range(3):
         FA_name = os.path.join(fa_dir.name, f'FA_{i_fa+1}')
-        FA_names +=  [FA_name + '.hdr']
+        T1_vols +=  [FA_name + '.hdr']
         xtr_name = FA_name + '.xtr'
 
-        write_analyze(signals[:,i_fa], FA_names[i_fa])
+        write_analyze(signals[:,i_fa], T1_vols[i_fa])
         write_xtr_file(xtr_name, 
             FlipAngle=FAs[i_fa],
             TR=TR,
             TimeStamp=120000.0)
     
     T1_fit, M0_fit,_,_ = run(
-        FA_names = FA_names, 
+        T1_vols = T1_vols, 
         method = 'VFA',
         noise_thresh = 0,
         overwrite = True)
@@ -401,40 +399,57 @@ def test(plot_output=True):
     return
 
 '''
-Below are the full options for calculate_T1 and calculate_T1_lite
-       vul_arg<std::string> FADataFile("-FA", "FA data filename, see notes for options", vul_arg_base::is_required)
-     ********************* calculate_T1 **************************************
-       vul_arg<std::vector<std::string>> mapNames("-maps", "Variable flip angle file names, comma separated (no spaces)", vul_arg_base::is_required)
-       vul_arg<std::string> outputDir("-o", "Output path", vul_arg_base::is_required)
-     
-       vul_arg<std::string> method("-m", "T1 method to use to fit, see notes for options", "VFA")
-       vul_arg<double> noiseThresh("-noise", "PD noise threshold", 100.0)
-     
-       vul_arg<std::string> roiName("-roi", "Path to ROI map")
-     
-       vul_arg<std::string> mdmLogBaseName("-log", "Madym log file name")
-       vul_arg<std::string> auditBaseName("-audit", "Audit file name")
-       vul_arg<std::string> errorBaseName("-E", "Error codes image file name")
-     
-       vul_arg<bool> overwrite("-overwrite", "Set overwrite existing analysis in output dir ON", MDM_NO)
-       vul_arg<bool> help("-help", "Show this usage and quit", MDM_NO)
-     **************** calculate_T1_lite **************************************
-    vul_arg<std::string> FADataFile("-FA", "FA data filename, see notes for options", vul_arg_base::is_required)
-     vul_arg<std::string> signalsDataFile("-s", "FA data filename, see notes for options", vul_arg_base::is_required)
-     vul_arg<int> nFAs("-n", "Number of time-points in data", vul_arg_base::is_required)
-     vul_arg<double> TR("-TR", "TR of dynamic series", vul_arg_base::is_required)
-     
-     vul_arg<std::string> outputDir("-o", "Output path", vul_arg_base::is_required)
-     vul_arg<std::string> outputName("-O", "Output path", "T1_fit.dat")
-     
-     vul_arg<std::string> method("-m", "T1 method to use to fit, see notes for options", "VFA")
-     
-     vul_arg<std::string> mdmLogBaseName("-log", "Madym log file name")
-     vul_arg<std::string> auditBaseName("-audit", "Audit file name")
-     vul_arg<std::string> errorBaseName("-E", "Error codes image file name")
-     
-     vul_arg<bool> overwrite("-overwrite", "Set overwrite existing analysis in output dir ON", MDM_NO)
-     vul_arg<bool> help("-help", "Show this usage and quit", MDM_NO) '''
+Below are the full C++ options for madym_T1 and madym_T1_lite
+
+********************* madym_T1 **************************************
+      madym_T1 options_:
+  -c [ --config ] arg (="")             Read input parameters from a 
+                                        configuration file
+  --cwd arg (="")                       Set the working directory
+
+madym_T1 config options_:
+  --roi arg (="")                       Path to ROI map
+  -T [ --T1_method ] arg (=VFA)         Method used for baseline T1 mapping
+  --T1_vols arg (=[])                   Filepaths to input signal volumes (eg 
+                                        from variable flip angles)
+  --T1_noise arg (=0)                   Noise threshold for fitting baseline T1
+  --n_T1 arg (=0)                       Number of input signals for baseline T1
+                                        mapping
+  -o [ --output ] arg (="")             Output folder
+  --sparse arg (=0)                     Flag to write output in sparse Analyze 
+                                        format
+  --overwrite arg (=0)                  Flag to overwrite existing analysis in 
+                                        output dir, default false
+  -E [ --err ] arg (=error_codes)       Filename of error codes map
+  --program_log arg (=ProgramLog.txt)   Filename of program log, will be 
+                                        appended with datetime
+  --config_out arg (=config.txt)        Filename of output config file, will be
+                                        appended with datetime
+  --audit arg (=AuditLog.txt)           Filename of audit log, will be appended
+                                        with datetime
+  --audit_dir arg (=C:\isbe\code\obj_msvc2015\manchester_qbi_public\bin\Release\audit_logs/)
+                                        Folder in which audit output is saved
+
+  -h [ --help ]                         Print options and quit
+  -v [ --version ]
+
+**************** madym_T1_lite **************************************
+    madym_T1_lite config options_:
+  --cwd arg (="")                       Set the working directory
+  --data arg (="")                      Input data filename, see notes for 
+                                        options
+  -T [ --T1_method ] arg (=VFA)         Method used for baseline T1 mapping
+  --FA arg (=0)                         FA of dynamic series
+  --TR arg (=0)                         TR of dynamic series
+  --T1_noise arg (=0)                   Noise threshold for fitting baseline T1
+  --n_T1 arg (=0)                       Number of input signals for baseline T1
+                                        mapping
+  -o [ --output ] arg (="")             Output folder
+  -O [ --output_name ] arg (=madym_analysis.dat)
+                                        Name of output data file
+
+  -h [ --help ]                         Print options and quit
+  -v [ --version ]                      Print version and quit '''
 
 
 

@@ -131,6 +131,7 @@ dmypy.json
 
 #VS Code files
 .vscode
+.code-workspace
 
 #Model files
 *.h5

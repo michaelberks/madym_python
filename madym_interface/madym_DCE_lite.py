@@ -223,9 +223,6 @@ def run(model=None, input_data=None,
        Outputs 7 parameters: 
        {Fpos=0.2, Fneg=0.2, Kpos=0.5, Kneg=4.0, fa=0.5, tau_a=0.025, tau_v=0}
     
-     See also: RUN_MADYM, TWO_CXM_MODEL, GADOXETATE_MODEL, MATERNE_MODEL,
-     EXTENDED_TOFTS_MODEL, TWO_CXM_PARAMS_MODEL_TO_PHYS, ACTIVE_PARAMS_MODEL_TO_PHYS
-    
      Created: 20-Feb-2019
      Author: Michael Berks 
      Email : michael.berks@manchester.ac.uk 
@@ -384,7 +381,7 @@ def run(model=None, input_data=None,
         if n_samples > 1 and init_params.shape[0] == n_samples:
             input_params_file = os.path.join(input_dir.name, 'input_params.dat')
             load_params = True
-            cmd_args += ['--init_file', f'{input_params_file}']
+            cmd_args += ['--init_params_file', f'{input_params_file}']
         else:
             init_str = ','.join(f'{i:5.4f}' for i in init_params)           
             cmd_args += ['--init_params', init_str]

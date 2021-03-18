@@ -10,8 +10,9 @@ def run(
     output_dir:str = None,
     cmd_exe:str = None,
     no_optimise:bool = False,
-    FA_names:list = None,
+    T1_vols:list = None,
     dynamic_basename:str = None,
+    dynamic_name_format:str = None,
     n_dyns:int = 0,
     input_Ct:bool = True,
     output_Ct_sig:bool = True,
@@ -23,7 +24,7 @@ def run(
     dose:float = None,
     injection_image:int = None,
     hct:float = None,
-    noise_thresh:float = None,
+    T1_noise:float = None,
     first_image:int = None,
     last_image:int = None,
     roi_name:str = None,
@@ -42,7 +43,7 @@ def run(
     test_enhancement:bool = True,
     sparse_write:bool = False,
     overwrite:bool = False,
-    mdm_log_name:str = None,
+    program_log_name:str = None,
     audit_name:str = None,
     error_name:str = None,
     working_directory:str = None,
@@ -75,10 +76,12 @@ def run(
         cmd_exe : str  default None,
         no_optimise : bool default False, 
             Flag to switch off optimising, will just fit initial parameters values for model
-        FA_names : list default None, 
-            ("-vfa", "Variable flip angle file names, comma separated (no spaces)")
+        T1_vols : list default None, 
+            File names of signal volumes to from which baseline T1 is mapped
         dynamic_basename : str default None, 
-            ("-dyn", "Template name for dynamic sequences eg. dynamic/dyn_")
+            Template name for dynamic sequences eg. dynamic/dyn_
+        dynamic_name_format : str default None, 
+            Format for converting dynamic series index to string, eg %01u
         n_dyns : int default 0, 
             Number of dynamic sequence maps to load. If <=0, loads all maps in dynamic dir matching -dyn pattern
         input_Ct : bool default True, 
@@ -88,9 +91,9 @@ def run(
         output_Ct_mod : bool = True, 
             Flag requesting modelled concentration maps are saved to output
         T1_name : str = None,
-            ("-T1", "Path to T1 map")
+            Path to T1 map
         M0_name : str = None,
-            ("-M0", "Path to M0 map")
+            Path to M0 map
         r1_const : float = None, 
             Relaxivity constant of concentration in tissue (in ms)
         M0_ratio : bool = True, 
@@ -101,14 +104,14 @@ def run(
             Injection image
         hct : float = None, 
             Haematocrit correction
-        noise_thresh : float = None, 
-            ("-noise", "PD noise threshold", 100.0)
+        T1_noise : float = None, 
+            T1 noise threshold
         first_image : int = None, 
             First image used to compute model fit
         last_image : int = None, 
             Last image used to compute model fit
         roi_name : str = None,
-            ("-roi", "Path to ROI map")
+           Path to ROI map
         aif_name : str = None, 
             Path to precomputed AIF if not using population AIF
         pif_name : str = None, 
@@ -116,7 +119,7 @@ def run(
         IAUC_times : np.array = [60,90,120],
             Times (in s) at which to compute IAUC values
         param_names : list = None,
-            Names of model parameters to be optimised, used to name the output parameter maps, comma separated (no spaces)
+            Names of model parameters to be optimised, used to name the output parameter maps
         init_params : np.array = None,
             Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x NParams
         fixed_params : np.array = None,
@@ -132,15 +135,15 @@ def run(
         init_map_params : np.array = None,
             Parameters initialised from maps (if empty and init_maps_dir set, all params from maps)
         dyn_noise : bool = False,
-            Set to use varying temporal noise in model fit OFF
+            Set to use varying temporal noise in model fit
         test_enhancement : bool = False, 
             Set test-for-enhancement flag
         sparse_write : bool = False,
-            Set sparseWrite to save output map sin sparse mode ON
+            Set sparseWrite to save output map sin sparse mode
         overwrite : bool = False,
-            Set overwrite existing analysis in output dir ON
-        mdm_log_name : str = None, 
-            Madym log file name
+            Set overwrite existing analysis in output dir
+        program_log_name : str = None, 
+            Program log file name
         audit_name : str = None, 
             Audit file name
         error_name : str = None,
@@ -190,10 +193,6 @@ def run(
     
        All models available in the main MaDym and MaDym-Lite C++ tools are
        available to fit. Currently these are:
-    
-       "T1_ONLY"
-       No tracer kinetic model fitted, just computes T1 (and M0) maps from
-       input FA volumes (does not require dynamic signals/concentration maps as input).
      
        "ETM"
        Extended-Tofts model. Requires single input AIF. 
@@ -237,9 +236,6 @@ def run(
        Outputs 7 parameters: 
        {Fpos=0.2, Fneg=0.2, Kpos=0.5, Kneg=4.0, fa=0.5, tau_a=0.025, tau_v=0}
     
-     See also: RUN_MADYM_LITE, TWO_CXM_MODEL, GADOXETATE_MODEL, MATERNE_MODEL,
-     EXTENDED_TOFTS_MODEL, TWO_CXM_PARAMS_MODEL_TO_PHYS, ACTIVE_PARAMS_MODEL_TO_PHYS
-    
      Created: 20-Feb-2019
      Author: Michael Berks 
      Email : michael.berks@manchester.ac.uk 
@@ -271,6 +267,9 @@ def run(
     if dynamic_basename:
         cmd_args += ['--dyn', dynamic_basename]
 
+    if dynamic_name_format:
+        cmd_args += ['--dyn_name_format', dynamic_name_format]
+
     if n_dyns > 0:
         cmd_args += ['-n', str(n_dyns)]
 
@@ -281,11 +280,11 @@ def run(
     else: #Below are only needed if input is signals
         
         #Check if we have VFA files
-        if not FA_names:
+        if not T1_vols:
             
             #If not we need a T1 map
             if not T1_name:
-                raise ValueError('You must supply either VFA files (using -vfa) '
+                raise ValueError('You must supply either T1 input files '
                     'to compute baseline T1 or a T1 map')
             else:
                 cmd_args += ['--T1', T1_name]
@@ -299,11 +298,11 @@ def run(
 
         else:
             #Set VFA files in the options string
-            fa_str = ','.join(FA_names)
-            cmd_args += ['--T1_vols', fa_str]
+            t1_str = ','.join(T1_vols)
+            cmd_args += ['--T1_vols', t1_str]
             
-            if noise_thresh is not None:
-                cmd_args += ['--T1_noise', f'{noise_thresh:5.4f}'] 
+            if T1_noise is not None:
+                cmd_args += ['--T1_noise', f'{T1_noise:5.4f}'] 
         
         #Set any other options required to convert signal to concentration
         if r1_const is not None:
@@ -354,8 +353,8 @@ def run(
     if pif_name:
         cmd_args += ['--pif', pif_name]
 
-    if mdm_log_name:
-        cmd_args += ['--log', mdm_log_name]
+    if program_log_name:
+        cmd_args += ['--log', program_log_name]
 
     if audit_name:
         cmd_args += ['--audit', audit_name]
@@ -621,7 +620,7 @@ madym config options_:
   --dyn_dir arg (="")                   Folder containing dynamic volumes, can 
                                         be left empty if already included in 
                                         option --dyn
-  --dyn_name_format_ arg (=%01u)        Number format for suffix specifying 
+  --dyn_name_format arg (=%01u)        Number format for suffix specifying 
                                         temporal index of dynamic volumes
   -n [ --n_dyns ] arg (=0)              Number of DCE volumes, if 0 uses all 
                                         images matching file pattern
