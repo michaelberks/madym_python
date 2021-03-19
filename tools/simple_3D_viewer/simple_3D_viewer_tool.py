@@ -8,7 +8,7 @@ import numpy as np
 from scipy import ndimage
 
 from image_io.analyze_format import read_analyze_img
-from general.gui_tools import qbiqscene as qs
+from tools import qbiqscene as qs
 
 from tools.simple_3D_viewer.simple_3D_viewer import Ui_Simple3DViewer      
 

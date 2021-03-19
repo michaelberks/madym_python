@@ -170,4 +170,4 @@ class Ui_AIFViewer(object):
         self.dynVolSelectButton.setText(_translate("AIFViewer", "Select"))
         self.label_2.setText(_translate("AIFViewer", "Dynamic volume:"))
 
-from general.gui_tools.mplwidget import MplWidget
+from tools.mplwidget import MplWidget

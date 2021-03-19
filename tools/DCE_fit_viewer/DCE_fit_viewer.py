@@ -190,4 +190,4 @@ class Ui_DCEFitViewer(object):
         self.label_3.setText(_translate("DCEFitViewer", "Min C(t)"))
         self.label_2.setText(_translate("DCEFitViewer", "Max C(t)"))
 
-from general.gui_tools.mplwidget import MplWidget
+from tools.mplwidget import MplWidget

@@ -9,7 +9,7 @@ from scipy import ndimage
 
 from image_io.analyze_format import read_analyze_img
 from dce_models.data_io import get_dyn_vals
-from general.gui_tools import qbiqscene as qs
+from tools import qbiqscene as qs
 
 from tools.DCE_fit_viewer.DCE_fit_viewer import Ui_DCEFitViewer  
 
