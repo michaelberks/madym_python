@@ -16,7 +16,7 @@ def  run(
   	TR:float = None,
     B1_name:str = None,
     B1_scaling:float = None,
-    B1_values:np.array = False,
+    B1_values:np.array = None,
     method:str = 'VFA',
     output_dir:str = None,
     output_name:str = 'madym_analysis.dat',
