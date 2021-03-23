@@ -6,19 +6,24 @@ import numpy as np
 from madym_interface.utils import local_madym_root
 
 def run(
+    config_file:str=None,
     model:str=None, 
     output_dir:str = None,
     cmd_exe:str = None,
     no_optimise:bool = False,
     T1_vols:list = None,
+    T1_method:str = None,
     dynamic_basename:str = None,
-    dynamic_name_format:str = None,
+    sequence_format:str = None,
     n_dyns:int = 0,
     input_Ct:bool = True,
     output_Ct_sig:bool = True,
     output_Ct_mod:bool = True,
     T1_name:str = None,
     M0_name:str = None,
+    B1_name:str = None,
+    B1_scaling:float = None,
+    B1_correction:bool = False,
     r1_const:float = None,
     M0_ratio:bool = True,
     dose:float = None,
@@ -29,6 +34,7 @@ def run(
     last_image:int = None,
     roi_name:str = None,
     aif_name:str = None,
+    aif_map:str = None,
     pif_name:str = None,
     IAUC_times:np.array = [60,90,120],
     param_names:list = None,
@@ -39,13 +45,21 @@ def run(
     relative_limit_values:np.array = None,
     init_maps_dir:str = None,
     init_map_params:np.array = None,
+    residuals:str = None,
+    max_iter:int = None,
     dyn_noise:bool = False,
     test_enhancement:bool = True,
-    sparse_write:bool = False,
+    img_fmt_r:str = None,
+    img_fmt_w:str = None,
     overwrite:bool = False,
     program_log_name:str = None,
+    audit_dir:str = None,
     audit_name:str = None,
+    config_out:str = None,
     error_name:str = None,
+    no_log:bool = False,
+    no_audit:bool = False,
+    quiet:bool = False,
     working_directory:str = None,
     dummy_run:bool = False):
     '''
@@ -65,6 +79,8 @@ def run(
     to the ease with which it deals with optional parameters)
 
     Mandatory inputs (if not set will run the test function on synthetic data):
+        config_file (str) - Path to file setting options OR
+
         model (str) - Model to fit, specified by its name in CAPITALS,
             see notes for options
 
@@ -78,9 +94,11 @@ def run(
             Flag to switch off optimising, will just fit initial parameters values for model
         T1_vols : list default None, 
             File names of signal volumes to from which baseline T1 is mapped
+        T1_method : str default None
+            Method used for T1 mapping eg. VFA
         dynamic_basename : str default None, 
             Template name for dynamic sequences eg. dynamic/dyn_
-        dynamic_name_format : str default None, 
+        sequence_format : str default None, 
             Format for converting dynamic series index to string, eg %01u
         n_dyns : int default 0, 
             Number of dynamic sequence maps to load. If <=0, loads all maps in dynamic dir matching -dyn pattern
@@ -90,10 +108,16 @@ def run(
             Flag requesting concentration (derived from signal) are saved to output
         output_Ct_mod : bool = True, 
             Flag requesting modelled concentration maps are saved to output
-        T1_name : str = None,
+        T1_name : str default None,
             Path to T1 map
-        M0_name : str = None,
+        M0_name : str default None,
             Path to M0 map
+        B1_name : str default None,
+            Path to B1 correction map
+        B1_scaling:float default None,
+            Value applied to scaled values in B1 correction map
+        B1_correction:bool default False,
+            Flag to turn B1 correction on
         r1_const : float = None, 
             Relaxivity constant of concentration in tissue (in ms)
         M0_ratio : bool = True, 
@@ -114,6 +138,8 @@ def run(
            Path to ROI map
         aif_name : str = None, 
             Path to precomputed AIF if not using population AIF
+        aif_map : str = None, 
+            Path to precomputed AIF voxel mask if not using population AIF
         pif_name : str = None, 
             Path to precomputed PIF if not deriving from AIF
         IAUC_times : np.array = [60,90,120],
@@ -134,20 +160,36 @@ def run(
             Path to directory containing maps of parameters to initialise fit (overrides init_params)
         init_map_params : np.array = None,
             Parameters initialised from maps (if empty and init_maps_dir set, all params from maps)
+        residuals : str = None, 
+            Path to residuals map used to threshold new fits
+        max_iter: int = None
+            Maximum number of iterations to run model fit for
         dyn_noise : bool = False,
             Set to use varying temporal noise in model fit
         test_enhancement : bool = False, 
             Set test-for-enhancement flag
-        sparse_write : bool = False,
-            Set sparseWrite to save output map sin sparse mode
+        img_fmt_r : str = None
+            Image format for reading input
+        img_fmt_w : str = None
+            Image format for writing output
         overwrite : bool = False,
             Set overwrite existing analysis in output dir
         program_log_name : str = None, 
             Program log file name
+        audit_dir : str = None,
+            Folder in which audit output is saved
         audit_name : str = None, 
             Audit file name
         error_name : str = None,
             Error codes image file name
+        config_out : str = None,
+            Filename of output config file, will be appended with datetime
+        no_log arg : bool = False,
+            Switch off program logging
+        no_audit : bool = False,
+            Switch off audit logging
+        quiet : bool = False,
+            Do not display logging messages in cout
         working_directory : str = None,
             Sets the current working directory for the system call, allows setting relative input paths for data
         dummy_run : bool = False
@@ -242,7 +284,7 @@ def run(
      Phone : +44 (0)161 275 7669 
      Copyright: (C) University of Manchester''' 
 
-    if model is None:
+    if model is None and config_file is None:
         test()
         return
 
@@ -258,17 +300,24 @@ def run(
         
         cmd_exe = os.path.join(madym_root,'madym_DCE')
 
-    #Set up initial string using all the values we can directly input args
-    cmd_args = [cmd_exe, 
-        '-m', model,
-        '-o', output_dir] 
+    #Set up initial cmd string
+    cmd_args = [cmd_exe]
+    
+    if config_file:
+        cmd_args += ['-c', config_file]
+
+    if model:
+        cmd_args += ['-m', model]
+    
+    if output_dir:
+        cmd_args += ['-o', output_dir] 
 
     #Set the dynamic names
     if dynamic_basename:
         cmd_args += ['--dyn', dynamic_basename]
 
-    if dynamic_name_format:
-        cmd_args += ['--dyn_name_format', dynamic_name_format]
+    if sequence_format:
+        cmd_args += ['--sequence_format', sequence_format]
 
     if n_dyns > 0:
         cmd_args += ['-n', str(n_dyns)]
@@ -303,6 +352,9 @@ def run(
             
             if T1_noise is not None:
                 cmd_args += ['--T1_noise', f'{T1_noise:5.4f}'] 
+
+            if T1_method:
+                cmd_args += ['--T1_method', T1_method]
         
         #Set any other options required to convert signal to concentration
         if r1_const is not None:
@@ -314,6 +366,15 @@ def run(
 
     #Now go through all the other optional parameters, and if they've been set,
     #set the necessary option flag in the cmd string
+    if B1_name:
+        cmd_args += ['--B1', B1_name]
+
+    if B1_scaling is not None:
+        cmd_args += ['--B1_scaling', B1_scaling]
+
+    if B1_correction:
+        cmd_args += ['--B1_correction']
+     
     if dose is not None:
         cmd_args += ['--dose', f'{dose:4.3f}']  
 
@@ -350,6 +411,9 @@ def run(
     if aif_name:
         cmd_args += ['--aif', aif_name]
 
+    if aif_map:
+        cmd_args += ['--aif_map', aif_map]
+
     if pif_name:
         cmd_args += ['--pif', pif_name]
 
@@ -358,6 +422,21 @@ def run(
 
     if audit_name:
         cmd_args += ['--audit', audit_name]
+
+    if audit_dir:
+        cmd_args += ['--audit_dir', audit_dir]
+
+    if config_out:
+        cmd_args += ['--config_out', config_out]
+
+    if no_log:
+        cmd_args += ['--no_log']
+
+    if no_audit:
+        cmd_args += ['--no_audit']
+
+    if quiet:
+        cmd_args += ['--quiet']
 
     if error_name:
         cmd_args += ['--err', error_name] 
@@ -396,12 +475,21 @@ def run(
         if relative_limit_values:
             relative_str = ','.join(f'{r:5.4f}' for r in relative_limit_values)           
             cmd_args += ['--relative_limit_values', relative_str]
-        
-    if overwrite:
-        cmd_args += ['--overwrite']
+
+    if residuals:
+        cmd_args += ['--residuals', residuals]
+
+    if max_iter is not None:
+        cmd_args += ['--max_iter', str(max_iter)]
+
+    if img_fmt_r:
+        cmd_args += ['--img_fmt_r', img_fmt_r]
+
+    if img_fmt_w:
+        cmd_args += ['--img_fmt_w', img_fmt_w]
 
     if overwrite:
-        cmd_args += ['--sparse']
+        cmd_args += ['--overwrite']
 
     #Args structure complete, convert to string for printing
     cmd_str = ' '.join(cmd_args)
@@ -514,12 +602,14 @@ def test(plot_output=True):
         input_Ct = True,
         output_Ct_sig = True,
         output_Ct_mod = True,
+        img_fmt_r = 'ANALYZE',
+        img_fmt_w = 'ANALYZE',
         injection_image=injection_img,
         overwrite=True)
     print(f'madym return code = {result.returncode}')
 
     #Load in the parameter img vols and extract the single voxel from each
-    ktrans_fit = read_analyze_img(os.path.join(Ct_output_dir,'ktrans.hdr'))[0,0]
+    ktrans_fit = read_analyze_img(os.path.join(Ct_output_dir,'Ktrans.hdr'))[0,0]
     ve_fit = read_analyze_img(os.path.join(Ct_output_dir,'v_e.hdr'))[0,0]
     vp_fit = read_analyze_img(os.path.join(Ct_output_dir,'v_p.hdr'))[0,0]
     tau_fit = read_analyze_img(os.path.join(Ct_output_dir,'tau_a.hdr'))[0,0]
@@ -527,9 +617,9 @@ def test(plot_output=True):
     Cm_t = np.zeros([1,100])
     for i_dyn in range(nDyns):
         Cs_t[0,i_dyn] = read_analyze_img(os.path.join(
-                Ct_output_dir, f'Ct_sig{i_dyn+1}.hdr'))[0,0]
+                Ct_output_dir, 'Ct_sig', f'Ct_sig{i_dyn+1}.hdr'))[0,0]
         Cm_t[0,i_dyn] = read_analyze_img(os.path.join(
-                Ct_output_dir, f'Ct_mod{i_dyn+1}.hdr'))[0,0]
+                Ct_output_dir, 'Ct_mod', f'Ct_mod{i_dyn+1}.hdr'))[0,0]
 
     model_sse = np.sum((C_tn-Cm_t)**2)
 
@@ -566,11 +656,13 @@ def test(plot_output=True):
         T1_name = T1_name,
         r1_const = r1_const,
         injection_image = injection_img,
+        img_fmt_r = 'ANALYZE',
+        img_fmt_w = 'ANALYZE',
         overwrite = 1)
     print(f'madym return code = {result.returncode}')
 
     #Load in the parameter img vols and extract the single voxel from each
-    ktrans_fit = read_analyze_img(os.path.join(St_output_dir, 'ktrans.hdr'))[0,0]
+    ktrans_fit = read_analyze_img(os.path.join(St_output_dir, 'Ktrans.hdr'))[0,0]
     ve_fit = read_analyze_img(os.path.join(St_output_dir, 'v_e.hdr'))[0,0]
     vp_fit = read_analyze_img(os.path.join(St_output_dir, 'v_p.hdr'))[0,0]
     tau_fit = read_analyze_img(os.path.join(St_output_dir, 'tau_a.hdr'))[0,0]
@@ -578,9 +670,9 @@ def test(plot_output=True):
     Cm_t = np.zeros([1,100])
     for i_dyn in range(nDyns):
         Cs_t[0,i_dyn] = read_analyze_img(os.path.join(
-                St_output_dir, f'Ct_sig{i_dyn+1}.hdr'))[0,0]
+                St_output_dir, 'Ct_sig', f'Ct_sig{i_dyn+1}.hdr'))[0,0]
         Cm_t[0,i_dyn] = read_analyze_img(os.path.join(
-                St_output_dir, f'Ct_mod{i_dyn+1}.hdr'))[0,0]
+                St_output_dir, 'Ct_mod', f'Ct_mod{i_dyn+1}.hdr'))[0,0]
 
     model_sse = np.sum((C_tn-Cm_t)**2)
 
@@ -605,96 +697,3 @@ def test(plot_output=True):
 
     #Delete input and output files - just need to cleanup the temporary dir
     test_dir.cleanup()
-
-'''
-Below are the full C++ options for madym lite
-     madym options_:
-  -c [ --config ] arg (="")             Read input parameters from a 
-                                        configuration file
-  --cwd arg (="")                       Set the working directory
-
-madym config options_:
-  --Ct arg (=0)                         Flag specifying input dynamic sequence 
-                                        are concentration (not signal) maps
-  -d [ --dyn ] arg (=dyn_)              Root name for dynamic volumes
-  --dyn_dir arg (="")                   Folder containing dynamic volumes, can 
-                                        be left empty if already included in 
-                                        option --dyn
-  --dyn_name_format arg (=%01u)        Number format for suffix specifying 
-                                        temporal index of dynamic volumes
-  -n [ --n_dyns ] arg (=0)              Number of DCE volumes, if 0 uses all 
-                                        images matching file pattern
-  -i [ --inj ] arg (=8)                 Injection image
-  --roi arg (="")                       Path to ROI map
-  -T [ --T1_method ] arg (=VFA)         Method used for baseline T1 mapping
-  --T1_vols arg (=[])                   Filepaths to input signal volumes (eg 
-                                        from variable flip angles)
-  --T1_noise arg (=0)                   Noise threshold for fitting baseline T1
-  --n_T1 arg (=0)                       Number of input signals for baseline T1
-                                        mapping
-  --M0_ratio arg (=1)                   Flag to use ratio method to scale 
-                                        signal instead of precomputed M0
-  --T1 arg (="")                        Path to precomputed T1 map
-  --M0 arg (="")                        Path to precomputed M0 map
-  --r1 arg (=3.3999999999999999)        Relaxivity constant of concentration in
-                                        tissue
-  --aif arg (="")                       Path to precomputed AIF, if not set 
-                                        uses population AIF
-  --pif arg (="")                       Path to precomputed AIF, if not set 
-                                        derives from AIF
-  --aif_slice arg (=0)                  Slice used to automatically measure AIF
-  -D [ --dose ] arg (=0.10000000000000001)
-                                        Contrast-agent dose
-  -H [ --hct ] arg (=0.41999999999999998)
-                                        Haematocrit level
-  -m [ --model ] arg (="")              Tracer-kinetic model
-  --init_params arg (=[ ])              Initial values for model parameters to 
-                                        be optimised
-  --init_maps arg (="")                 Path to folder containing parameter 
-                                        maps for per-voxel initialisation
-  --init_map_params arg (=[ ])          Index of parameters sampled from maps
-  --param_names arg (=[])               Names of model parameters, used to 
-                                        override default output map names
-  --fixed_params arg (=[ ])             Index of parameters fixed to their 
-                                        initial values
-  --fixed_values arg (=[ ])             Values for fixed parameters
-  --relative_limit_params arg (=[ ])    Index of parameters to which relative 
-                                        limits are applied
-  --relative_limit_values arg (=[ ])    Values for relative limits - optimiser 
-                                        bounded to range initParam +/- relLimit
-  --first arg (=0)                      First image used in model fit cost 
-                                        function
-  --last arg (=0)                       Last image used in model fit cost 
-                                        function
-  --no_opt arg (=0)                     Flag to turn-off optimisation, default 
-                                        false
-  --dyn_noise arg (=0)                  Flag to use varying temporal noise in 
-                                        model fit, default false
-  --test_enh arg (=1)                   Flag to test for enhancement before 
-                                        fitting model, default true
-  --max_iter arg (=0)                   Max iterations per voxel in 
-                                        optimisation - 0 for no limit
-  --Ct_sig arg (=0)                     Flag to save signal-derived dynamic 
-                                        concentration maps
-  --Ct_mod arg (=0)                     Flag to save modelled dynamic 
-                                        concentration maps
-  -I [ --iauc ] arg (=[ 60 90 120 ])    Times (in s, post-bolus injection) at 
-                                        which to compute IAUC
-  -o [ --output ] arg (="")             Output folder
-  --overwrite arg (=0)                  Flag to overwrite existing analysis in 
-                                        output dir, default false
-  --sparse arg (=0)                     Flag to write output in sparse Analyze 
-                                        format
-  -E [ --err ] arg (=error_codes)       Filename of error codes map
-  --program_log arg (=ProgramLog.txt)   Filename of program log, will be 
-                                        appended with datetime
-  --config_out arg (=config.txt)        Filename of output config file, will be
-                                        appended with datetime
-  --audit arg (=AuditLog.txt)           Filename of audit log, will be appended
-                                        with datetime
-  --audit_dir arg (=C:\isbe\code\obj_msvc2015\manchester_qbi_public\bin\Release\audit_logs/)
-                                        Folder in which audit output is saved
-
-  -h [ --help ]                         Print options and quit
-  -v [ --version ]                      Print version and quit'''
-        

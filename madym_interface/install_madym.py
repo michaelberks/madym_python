@@ -47,6 +47,13 @@ def install_madym(
     
      Notes:
     ''' 
+    print(
+        'This function is now obsolete. Madym should be installed from one of the pre-built'
+        ' binaries, or built from source.'
+        ' See https://gitlab.com/manchester_qbi/manchester_qbi_public/madym_cxx/-/wikis/home'
+        ' for details.'
+    )
+    '''
     if qbi_share_path is None:
         root = tk.Tk()
         root.overrideredirect(1)
@@ -129,8 +136,11 @@ def install_madym(
     #Run tests if set
     if run_tests:
         run_madym_tests(test_level=run_tests, plot_output=plot_test_output)
+    '''
+    return
 
 if __name__ == '__main__':
+    '''
     parser = argparse.ArgumentParser(description='Install madym cxx tools from QBI server')
     
     parser.add_argument('-Q', dest='qbi_share_path', default=None, type=str, 
@@ -159,3 +169,5 @@ if __name__ == '__main__':
         madym_root=options.madym_root, 
         version=options.version, 
         run_tests=options.run_tests)
+        '''
+    install_madym()

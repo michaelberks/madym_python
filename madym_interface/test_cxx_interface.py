@@ -36,7 +36,7 @@ with open ('C:\\isbe\\aif_py.txt', 'w') as aif_file:
 #%%
 #Use madym_DCE lite to fit this data
 model_params_C, model_fit_C, _, _, CmC_t,_ = madym_DCE_lite.run(
-    model='ETM', input_data=C_tn, dynTimes=t)
+    model='ETM', input_data=C_tn, dyn_times=t)
 
 #Convert the concentrations to signals with some notional T1 values and
 #refit using signals as input
@@ -51,13 +51,13 @@ S_tn = concentration_to_signal(
 model_params_S, model_fit_S, _,_,CmS_t,Cm_t = madym_DCE_lite.run(
     model='ETM',
     input_data=S_tn,
-    dynTimes=t,
-    input_Ca=0,
+    dyn_times=t,
+    input_Ct=0,
     T1=T1_0,
     TR=TR,
     FA=FA,
     r1_const=r1_const,
-    injectionImage=injection_img)
+    injection_image=injection_img)
 
 #Convert the modelled concentrations back to signal space
 Sm_t = concentration_to_signal(
@@ -100,6 +100,7 @@ print(f'Tau: ({tau:3.2f}, {model_params_C[0,3]:3.2f}, {model_params_S[0,3]:3.2f}
 
 # %%
 madym_DCE_lite.test()
+
 
 # %%
 from image_io.write_xtr_file import write_xtr_file
@@ -154,3 +155,13 @@ madym_DCE.run()
 from madym_interface import madym_T1
 madym_T1.run()
 # %%
+from madym_interface import utils
+v1 = utils.local_madym_version()
+v2 = utils.latest_madym_version()
+utils.check_madym_updates()
+# %%
+from madym_interface import install_madym
+install_madym.install_madym()
+# %%
+from madym_interface import run_madym_tests
+run_madym_tests.run_madym_tests()

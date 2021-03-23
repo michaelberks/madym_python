@@ -8,17 +8,30 @@ from image_io.analyze_format import read_analyze_img, write_analyze
 from madym_interface.utils import local_madym_root
 
 def  run(
+    config_file = None,
     cmd_exe:str = None,
     T1_vols:list = None,
     FAs:np.array = None,
     signals:np.array = None,
   	TR:float = None,
+    B1_name:str = None,
+    B1_scaling:float = None,
+    B1_values:np.array = False,
     method:str = 'VFA',
     output_dir:str = None,
     output_name:str = 'madym_analysis.dat',
     noise_thresh:float = None,
     roi_name:str = None,
-    error_name:str = 'error_codes.hdr',
+    program_log_name:str = None,
+    audit_dir:str = None,
+    audit_name:str = None,
+    config_out:str = None,
+    error_name:str = None,
+    no_log:bool = False,
+    no_audit:bool = False,
+    quiet:bool = False,
+    img_fmt_r:str = None,
+    img_fmt_w:str = None,
     overwrite:bool = False,
     working_directory:str = None,
     dummy_run:bool = False
@@ -40,6 +53,8 @@ def  run(
     to the ease with which it deals with optional parameters) 
     
     Inputs:
+        config_file: str = None
+            Path to file setting options OR
         cmd_exe : str = None,
             Path to the C++ executable to be run.
             One of T1_vols or FAs must be set (if neither, the test function will be run on
@@ -54,6 +69,12 @@ def  run(
 			Signals associated with each FA, 1 row per sample
         TR : float default None, 
 			TR in msecs, required if directly fitting (otherwise will be taken from FA map headers)
+        B1_name : str default None,
+            Path to B1 correction map
+        B1_scaling:float default None,
+            Value applied to scaled values in B1 correction map
+        B1_values:np.array default None,
+            B1 correction values, 1D array of length n_samples
         method : str default 'VFA',
 			T1 method to use to fit, see notes for options
         output_dir : str default None, 
@@ -64,8 +85,26 @@ def  run(
 			PD noise threshold
         roi_name : str default None,
 			Path to ROI map
-        error_name : str default 'error_codes.hdr',
+        program_log_name : str = None, 
+            Program log file name
+        audit_dir : str = None,
+            Folder in which audit output is saved
+        audit_name : str = None, 
+            Audit file name
+        error_name : str default None,
 			Error codes image file name
+        config_out : str = None,
+            Filename of output config file, will be appended with datetime
+        no_log arg : bool = False,
+            Switch off program logging
+        no_audit : bool = False,
+            Switch off audit logging
+        quiet : bool = False,
+            Do not display logging messages in cout
+        img_fmt_r : str = None
+            Image format for reading input
+        img_fmt_w : str = None
+            Image format for writing output
         overwrite : bool default False,
 			Set overwrite existing analysis in output dir ON
         working_directory : str = None,
@@ -160,6 +199,12 @@ def  run(
             '-T', method,
             '--T1_vols', fa_str,
             '-o', output_dir]
+
+        if B1_name:
+            cmd_args += ['--B1', B1_name]
+
+        if B1_scaling is not None:
+            cmd_args += ['--B1_scaling', B1_scaling]
         
         if noise_thresh is not None:
             cmd_args += ['--T1_noise', f'{noise_thresh:5.4f}']
@@ -170,6 +215,33 @@ def  run(
         if error_name is not None:
             cmd_args += ['--err', error_name]
 
+        if program_log_name:
+            cmd_args += ['--log', program_log_name]
+
+        if audit_name:
+            cmd_args += ['--audit', audit_name]
+
+        if audit_dir:
+            cmd_args += ['--audit_dir', audit_dir]
+
+        if config_out:
+            cmd_args += ['--config_out', config_out]
+
+        if no_log:
+            cmd_args += ['--no_log']
+
+        if no_audit:
+            cmd_args += ['--no_audit']
+
+        if quiet:
+            cmd_args += ['--quiet']
+
+        if img_fmt_r:
+            cmd_args += ['--img_fmt_r', img_fmt_r]
+
+            if img_fmt_w:
+                cmd_args += ['--img_fmt_w', img_fmt_w]
+        
         if overwrite:
             cmd_args += ['--overwrite']
         
@@ -200,6 +272,18 @@ def  run(
             raise ValueError(
                 'You must supply a numeric TR value (in msecs) to fit directly to data')
         
+        #If B1 values supplied, append them to the signals and set B1_correction
+        #flag
+        if B1_values is not None:
+            signals = np.concatenate(
+                (signals, np.atleast_1d(B1_values).reshape((nSamples,1))),
+                1
+            )
+            cmd_args += ['--B1_correction']
+
+        if quiet:
+            cmd_args += ['--quiet']
+
         #Get a name for the temporary file we'll write input data to (we'll hold
         #off writing anything until we know this isn't a dummy run). For python
         #we'll do this differently to Matlab, using the tempdir function to create
@@ -367,6 +451,8 @@ def test(plot_output=True):
         T1_vols = T1_vols, 
         method = 'VFA',
         noise_thresh = 0,
+        img_fmt_r = 'ANALYZE',
+        img_fmt_w = 'ANALYZE',
         overwrite = True)
     signals_fit = signal_from_T1(T1_fit, M0_fit, FAs, TR)
     
@@ -397,60 +483,3 @@ def test(plot_output=True):
         print(f' M0: ({M0[i_sample]}, {M0_fit[0,i_sample]:4.1f})')
     
     return
-
-'''
-Below are the full C++ options for madym_T1 and madym_T1_lite
-
-********************* madym_T1 **************************************
-      madym_T1 options_:
-  -c [ --config ] arg (="")             Read input parameters from a 
-                                        configuration file
-  --cwd arg (="")                       Set the working directory
-
-madym_T1 config options_:
-  --roi arg (="")                       Path to ROI map
-  -T [ --T1_method ] arg (=VFA)         Method used for baseline T1 mapping
-  --T1_vols arg (=[])                   Filepaths to input signal volumes (eg 
-                                        from variable flip angles)
-  --T1_noise arg (=0)                   Noise threshold for fitting baseline T1
-  --n_T1 arg (=0)                       Number of input signals for baseline T1
-                                        mapping
-  -o [ --output ] arg (="")             Output folder
-  --sparse arg (=0)                     Flag to write output in sparse Analyze 
-                                        format
-  --overwrite arg (=0)                  Flag to overwrite existing analysis in 
-                                        output dir, default false
-  -E [ --err ] arg (=error_codes)       Filename of error codes map
-  --program_log arg (=ProgramLog.txt)   Filename of program log, will be 
-                                        appended with datetime
-  --config_out arg (=config.txt)        Filename of output config file, will be
-                                        appended with datetime
-  --audit arg (=AuditLog.txt)           Filename of audit log, will be appended
-                                        with datetime
-  --audit_dir arg (=C:\isbe\code\obj_msvc2015\manchester_qbi_public\bin\Release\audit_logs/)
-                                        Folder in which audit output is saved
-
-  -h [ --help ]                         Print options and quit
-  -v [ --version ]
-
-**************** madym_T1_lite **************************************
-    madym_T1_lite config options_:
-  --cwd arg (="")                       Set the working directory
-  --data arg (="")                      Input data filename, see notes for 
-                                        options
-  -T [ --T1_method ] arg (=VFA)         Method used for baseline T1 mapping
-  --FA arg (=0)                         FA of dynamic series
-  --TR arg (=0)                         TR of dynamic series
-  --T1_noise arg (=0)                   Noise threshold for fitting baseline T1
-  --n_T1 arg (=0)                       Number of input signals for baseline T1
-                                        mapping
-  -o [ --output ] arg (="")             Output folder
-  -O [ --output_name ] arg (=madym_analysis.dat)
-                                        Name of output data file
-
-  -h [ --help ]                         Print options and quit
-  -v [ --version ]                      Print version and quit '''
-
-
-
-

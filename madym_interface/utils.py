@@ -12,61 +12,31 @@ from tkinter import filedialog, messagebox
 import warnings
 import subprocess
 from shutil import copyfile
+import gitlab
 
 #-------------------------------------------------------------------------------------------
-def latest_madym_version(qbi_share_path:str=None):
+def latest_madym_version():
     ''' LATEST_MADYM_VERSION return the most current madym version available a string. MB has
     responsibility for maintaining. Note this may NOT be the version you have
     installed locally. Call local_madym_version to check that.
-       [version] = latest_madym_version(qbi_share_path)
-    
-     Inputs:
-          qbi_share_path - path to the root of the shared QBI drive (eg Q:\).
-          If empty, you will be prompted to select via uigetdir
+       [version] = latest_madym_version()
     
      Outputs:
           version (str) - version in v(Major).(Minor).(Patch) form of latest
-          madym version available on the QBI shared drive
+          madym version available on the GitLab madym_cxx repo
     
-     Example: [version] = latest_madym_version('Q:')
+     Example: [version] = latest_madym_version()
     
      Notes:
     
      See also: LOCAL_MADYM_VERSION
     
     '''
-    if qbi_share_path is None:
-        root = tk.Tk()
-        root.withdraw()
-        qbi_share_path = filedialog.askdirectory(
-            title='Path to QBI shared drive'
-        )
-        root.destroy()
-        if not qbi_share_path:
-            return ""
-        
-    if platform.system() == 'Windows':
-        madym_version_hdr = os.path.join(
-            qbi_share_path,
-            'software',
-            'madym_versions',
-            'mdm_version_win.h')
-    else:
-        madym_version_hdr = os.path.join(
-            qbi_share_path,
-            'software',
-            'madym_versions',
-            'mdm_version.h')
-
-    #Open version header and scan tags to get version
-    with open(madym_version_hdr, "rt") as hdr_file:
-        for line in hdr_file:
-            #Find line containing GIT_TAG, then get version
-            if line.find('GIT_TAG') >= 0:
-                version = line.split(' GIT_TAG ')[1].strip('\n').strip('"')
-                break
+    gl = gitlab.Gitlab('https://gitlab.com/')
+    project = gl.projects.list(search='madym_cxx')[0]
+    version = project.tags.list()[0].name.rstrip()
             
-    print(f'Latest Madym version on QBI share is {version}')
+    print(f'Latest Madym version on GitLab is {version}')
     return version
 
 #--------------------------------------------------------------------------------
@@ -122,14 +92,14 @@ def local_madym_version(cmd_exe:str=None):
                 ' you must set the cmd_exe argument')
             raise ValueError('cmd_exe not specified and MADYM_ROOT not found.')
 
-        cmd_exe = os.path.join(madym_root, 'madym_lite')
+        cmd_exe = os.path.join(madym_root, 'madym_DCE_lite')
 
-    result = subprocess.run([cmd_exe, '-version'], 
+    result = subprocess.run([cmd_exe, '-v'], 
         shell=False, 
         stderr=subprocess.PIPE, 
         stdout=subprocess.PIPE, 
         encoding='utf-8')
-    version = result.stdout
+    version = result.stdout.rstrip()
     return version
 
 #-------------------------------------------------------------------------------------
@@ -265,26 +235,25 @@ def set_madym_root(madym_root:str=None,
         if add_to_bash_profile:
             with open(os.path.expanduser('~/.bash_profile'), "a") as bash_file:
                 print(f"{set_cmd} MADYM_ROOT={madym_root}", file=bash_file)
+            with open(os.path.expanduser('~/.zprofile'), "a") as zsh_file:
+                print(f"{set_cmd} MADYM_ROOT={madym_root}", file=zsh_file)
 
     #Set the variable for this session (so we don't need to reactivate)
     os.environ['MADYM_ROOT'] = madym_root
     print(f'New madym root set to {madym_root}')
 
 #----------------------------------------------------------------------------
-def check_madym_updates(qbi_share_path:str = None):
+def check_madym_updates():
     '''CHECK_MADYM_UPDATES checks whether the local madym version matches the 
      latest version available from the share drive.
-       [] = check_madym_updates(qbi_share_path)
-    
-     Inputs:
-          qbi_share_path - path to the root of the shared QBI drive (eg Q:\)
+       [] = check_madym_updates()
     
      Outputs:
-          up_to_date (bool) - true if local version matched QBI share latest
+          up_to_date (bool) - true if local version matched GitLab madym_cxx latest
           version, false otherwise
     
-     Example: [version] = check_madym_updates('Q:');'''
-    latest_version = latest_madym_version(qbi_share_path)
+     Example: [version] = check_madym_updates();'''
+    latest_version = latest_madym_version()
     local_version = local_madym_version()
 
     up_to_date = latest_version == local_version

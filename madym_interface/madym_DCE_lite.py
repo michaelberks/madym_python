@@ -21,6 +21,7 @@ def run(model=None, input_data=None,
     FA:float = None,
     r1_const:float = None,
     M0_ratio:bool = True,
+    B1_values:np.array = False,
     dose:float = None,
     injection_image:int = None,
     hct:float = None,
@@ -34,9 +35,13 @@ def run(model=None, input_data=None,
     init_params:np.array = None,
     fixed_params:np.array = None,
     fixed_values:np.array = None,
+    relative_limit_params:np.array = None,
+    relative_limit_values:np.array = None,
     #
+    max_iter: int = None,
     dyn_noise_values:np.array = None,
     test_enhancement:bool = False,
+    quiet:bool = False,
     dummy_run:bool = False
 ):
     '''
@@ -95,6 +100,8 @@ def run(model=None, input_data=None,
             Relaxivity constant of concentration in tissue (in ms)
         M0_ratio : bool default True,  
             Flag to use ratio method to scale signal instead of supplying M0
+        B1_values:np.array default False,
+            B1 values to correct each FA, 1D array of length n_samples
         dose : float default None, 
             Concentration dose (mmole/kg)
         injection_image : int default None,  
@@ -119,11 +126,19 @@ def run(model=None, input_data=None,
             Parameters fixed to their initial values (ie not optimised)
         fixed_values : np.array default None, 
             Values for fixed parameters (overrides default initial parameter values)"
+        relative_limit_params : np.array = None,
+            Parameters with relative limits on their optimisation bounds
+        relative_limit_values : np.array = None,
+            Values for relative bounds, sets lower/upper bound as init param -/+ relative limit
         
+        max_iter: int = None
+            Maximum number of iterations to run model fit for
         dyn_noise_values : np.array default None,
             Varying temporal noise in model fit
         test_enhancement : bool default False, 
             Set test-for-enhancement flag
+        quiet : bool = False,
+            Do not display logging messages in cout
         dummy_run : bool default False 
             Don't run any thing, just print the cmd we'll run to inspect)
     
@@ -271,6 +286,14 @@ def run(model=None, input_data=None,
                 1
             )
 
+    #If B1 values supplied, append them to the signals and set B1_correction
+    #flag (applied after cmd set up, see below)
+    if B1_values is not None:
+        input_data = np.concatenate(
+            (input_data, np.atleast_1d(B1_values).reshape((n_samples,1))),
+            1
+        )
+
     #Check for bad samples, these can screw up Madym as the lite version
     #of the software doesn't do the full range of error checks Madym proper
     #does. So chuck them out now and warn the user
@@ -393,6 +416,23 @@ def run(model=None, input_data=None,
         if fixed_values is not None:
             fixed_str = ','.join(f'{f:5.4f}' for f in fixed_values)           
             cmd_args += ['--fixed_values', fixed_str]
+
+    if relative_limit_params:
+        relative_str = ','.join(str(r) for r in relative_limit_params)       
+        cmd_args += ['--relative_limit_params', relative_str]
+        
+        if relative_limit_values:
+            relative_str = ','.join(f'{r:5.4f}' for r in relative_limit_values)           
+            cmd_args += ['--relative_limit_values', relative_str]
+
+    if max_iter is not None:
+        cmd_args += ['--max_iter', str(max_iter)]
+
+    if B1_values is not None:
+        cmd_args += ['--B1_correction']
+
+    if quiet:
+        cmd_args += ['--quiet']
 
     #Args structure complete, convert to string for printing
     cmd_str = ' '.join(cmd_args)
@@ -578,73 +618,3 @@ def test(plot_output=True):
         plt.show()
 #--------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------
-    '''
-    Extra notes:
-    Below are the full C++ options for madym lite
-       madym-lite config options_:
-  --cwd arg (="")                       Set the working directory
-  --data arg (="")                      Input data filename, see notes for 
-                                        options
-  --Ct arg (=0)                         Flag specifying input dynamic sequence 
-                                        are concentration (not signal) maps
-  -t [ --times ] arg (="")              Path to file containing dynamic times
-  -n [ --n_dyns ] arg (=0)              Number of DCE volumes, if 0 uses all 
-                                        images matching file pattern
-  -i [ --inj ] arg (=8)                 Injection image
-  --M0_ratio arg (=1)                   Flag to use ratio method to scale 
-                                        signal instead of precomputed M0
-  --r1 arg (=3.3999999999999999)        Relaxivity constant of concentration in
-                                        tissue
-  --fa arg (=0)                         FA of dynamic series
-  --tr arg (=0)                         TR of dynamic series
-  --aif arg (="")                       Path to precomputed AIF, if not set 
-                                        uses population AIF
-  --pif arg (="")                       Path to precomputed AIF, if not set 
-                                        derives from AIF
-  -D [ --dose ] arg (=0.10000000000000001)
-                                        Contrast-agent dose
-  -H [ --hct ] arg (=0.41999999999999998)
-                                        Haematocrit level
-  -m [ --model ] arg (="")              Tracer-kinetic model
-  --init_params arg (=[ ])              Initial values for model parameters to 
-                                        be optimised
-  --init_params_file arg (="")          Path to data file containing maps of 
-                                        parameters to initialise fit
-  --param_names arg (=[])               Names of model parameters, used to 
-                                        override default output map names
-  --fixed_params arg (=[ ])             Index of parameters fixed to their 
-                                        initial values
-  --fixed_values arg (=[ ])             Values for fixed parameters
-  --relative_limit_params arg (=[ ])    Index of parameters to which relative 
-                                        limits are applied
-  --relative_limit_values arg (=[ ])    Values for relative limits - optimiser 
-                                        bounded to range initParam +/- relLimit
-  --first arg (=0)                      First image used in model fit cost 
-                                        function
-  --last arg (=0)                       Last image used in model fit cost 
-                                        function
-  --no_opt arg (=0)                     Flag to turn-off optimisation, default 
-                                        false
-  --dyn_noise_file arg (="")
-  --test_enh arg (=1)                   Flag to test for enhancement before 
-                                        fitting model, default true
-  --max_iter arg (=0)                   Max iterations per voxel in 
-                                        optimisation - 0 for no limit
-  --Ct_sig arg (=0)                     Flag to save signal-derived dynamic 
-                                        concentration maps
-  --Ct_mod arg (=0)                     Flag to save modelled dynamic 
-                                        concentration maps
-  -I [ --iauc ] arg (=[ 60 90 120 ])    Times (in s, post-bolus injection) at 
-                                        which to compute IAUC
-  -O [ --output_name ] arg (=madym_analysis.dat)
-                                        Name of output data file
-  -o [ --output ] arg (="")             Output folder
-
-  -h [ --help ]                         Print options and quit
-  -v [ --version ]                      Print version and quit
-    '''
-
-
-
-
-
