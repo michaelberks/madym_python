@@ -48,7 +48,7 @@ def run(model=None, input_data=None,
     MADYM_LITE wrapper function to call C++ tool Madym-lite. Fits
        tracer-kinetic models to DCE time-series, returning the model
        parameters and modelled concentration time-series
-       [model_params, model_fit, error_codes, model_conc, dyn_conc] = 
+       [model_params, model_fit, error_codes, Ct_m, Ct_s] = 
            run_madym_lite(model, input_data, varargin)
 
     Note: This wrapper allows setting of all optional parameters the full C++ function takes.
@@ -156,87 +156,44 @@ def run(model=None, input_data=None,
            for fitting each sample. 0 implies no errors or warnings. For all
            non-zero values refer to Madym documentation for details
     
-          model_conc (2D array, Nsamples x Ntimes) - the modelled
+          Ct_m (2D array, Nsamples x Ntimes) - the modelled
            concentration time-series for each input
     
-          dyn_conc (2D array, Nsamples x 2) - the signal-derived
+          Ct_s (2D array, Nsamples x 2) - the signal-derived
            concentration time-series for each input
     
      Examples:
        Fitting to concentration time-series. If using a population AIF, you
        must supply a vector of dynamic times. A population AIF (PIF) is used
        if the aif_name (pif_name) option is left empty.
-       [model_params, model_fit, error_codes, model_conc] = 
-           run("2CXM", dyn_conc, 'dyn_times', t)
+       [model_params, model_fit, error_codes, Ct_m] = 
+           run("2CXM", Ct_s, 'dyn_times', t)
     
        Fitting to concentration time-series using a patient specific AIF. The
        AIF should be defined in a text file with two columns containing the
        dynamic times and associated AIF value at each times respectively. Pass
        the full filepath as input
-       [model_params, model_fit, error_codes, model_conc] = 
-           run("2CXM", dyn_conc, 'aif_name', 'C:\DCE_data\pt_AIF.txt')
+       [model_params, model_fit, error_codes, Ct_m] = 
+           run("2CXM", Ct_s, 'aif_name', 'C:\DCE_data\pt_AIF.txt')
     
        Fitting to signals - Set input_Ct to false and use options to supply
        T1 values (and TR, FA, relax_coeff etc) to convert signals to
        concentration.
-       [model_params, model_fit, error_codes, model_conc, dyn_conc] = 
+       [model_params, model_fit, error_codes, Ct_m, Ct_s] = 
            run("2CXM", dyn_signals, 'dyn_times', t,
                'input_Ct', 0, 'T1', T1_vals, 'TR', TR, 'FA', FA)
     
        Fixing values in a model - eg to fit a TM instead of ETM, set Vp (the
        3rd parameter in the ETM to 0)
-       [model_params, model_fit, error_codes, model_conc] = 
-           run("ETM", dyn_conc, 'dyn_times', t,
+       [model_params, model_fit, error_codes, Ct_m] = 
+           run("ETM", Ct_s, 'dyn_times', t,
                'fixed_params', 3, 'fixed_values', 0.0)
     
      Notes:
        Tracer-kinetic models:
     
        All models available in the main MaDym and MaDym-Lite C++ tools are
-       available to fit. Currently these are:
-     
-       "ETM"
-       Extended-Tofts model. Requires single input AIF. 
-       Outputs 4 params (= initial values for optimisation):
-       {Ktrans=0.2, Ve=0.2, Vp=0.2, tau_a=0.0*} *Arterial offset delay
-       To run a standard Tofts model, set Vp = 0 by using options 
-       'fixed_params', [3], 'fixed_values', [0.0],
-     
-       "DIETM"
-       Extended-Tofts model with dual-input supply. Requires both AIF and PIF.
-       Outputs 6 parameters:
-       {Ktrans=0.2, Ve=0.2, Vp=0.2, fa=0.5, tau_a=0.0, tau_v=0.0*} *Venous delay 
-     
-       "AUEM" formerly "GADOXETATE" 
-       Active Uptake + Efflux Model - Leo's model for gaodxetate contrast in the liver. 
-       Requires both AIF and PIF.
-       Outputs 7 parameters:
-       {Fp=0.6, ve=0.2, ki=0.2, kef=0.1, fa=0.5, tau_a=0.025, tau_v=0}
-    
-       "DISCM" formerly "MATERNE"
-       Dual-Input Single Compartment Model
-       Requires both AIF and PIF.
-       {Fp=0.6, fa=0.5, k2=1.0, tau_a=0.025, tau_v=0}
-     
-       "2CXM"
-       2-compartment exchange model. Single AIF input.
-       Outputs 5 parameters:
-       { Fp=0.6, PS=0.2, v_e=0.2, v_p=0.2, tau_a=0}
-     
-       "DI2CXM"
-       Dual-input version of two-compartment exchange model. Requires both AIF and PIF.
-       {Fp=0.6, PS=0.2, v_e=0.2, v_p=0.2, fa0.5, tau_a=0, tau_v=0 }
-     
-       "DIBEM"
-       Dual-Input, Bi-Exponential Model that fits the functional form of the
-       IRF directly, and can be reduced to any of the (DI)2CXM, GADOXETATE, 
-       MATERNE or TM (but not ETM) models through appropriate fixing of 
-       parameters. See DI-IRF notes on Matlab repository wiki for further
-       explanation, and see functions TWO_CXM_PARAMS_MODEL_TO_PHYS and
-       ACTIVE_PARAMS_MODEL_TO_PHYS for converting the DIRRF outputs into 
-       physiologically meaningful parameters.
-       Outputs 7 parameters: 
-       {Fpos=0.2, Fneg=0.2, Kpos=0.5, Kneg=4.0, fa=0.5, tau_a=0.025, tau_v=0}
+       available to fit. See https://gitlab.com/manchester_qbi/manchester_qbi_public/madym_cxx/-/wikis/dce_models for details.
     
      Created: 20-Feb-2019
      Author: Michael Berks 
@@ -446,9 +403,9 @@ def run(model=None, input_data=None,
         model_fit = []
         iauc = []
         error_codes = []
-        model_conc = []
-        dyn_conc = []
-        return model_params, model_fit, iauc, error_codes, model_conc, dyn_conc
+        Ct_m = []
+        Ct_s = []
+        return model_params, model_fit, iauc, error_codes, Ct_m, Ct_s
 
     #Write input values to a temporary file
     np.savetxt(input_file, input_data, fmt='%6.5f')
@@ -497,12 +454,12 @@ def run(model=None, input_data=None,
     if output_Ct_mod:
         if output_Ct_sig:
             #Have another n_dyns of dynamic concentration values
-            dyn_conc = outputData[:, -n_dyns:]
+            Ct_s = outputData[:, -n_dyns:]
             param_col2 -= n_dyns
                   
         
         #After the params we have n_dyns of model concentration values
-        model_conc = outputData[:, param_col2-n_dyns:param_col2]
+        Ct_m = outputData[:, param_col2-n_dyns:param_col2]
         param_col2 -= n_dyns       
 
     model_params = outputData[:, param_col1:param_col2]
@@ -515,7 +472,7 @@ def run(model=None, input_data=None,
         output_temp_dir.cleanup()
 
     #Return the fit parameters
-    return model_params, model_fit, iauc, error_codes, model_conc, dyn_conc
+    return model_params, model_fit, iauc, error_codes, Ct_m, Ct_s
     
 
     #-----------------------------------------------------------------------
