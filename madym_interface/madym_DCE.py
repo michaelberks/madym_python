@@ -37,6 +37,7 @@ def run(
     aif_map:str = None,
     pif_name:str = None,
     IAUC_times:np.array = [60,90,120],
+    IAUC_at_peak:bool = False,
     param_names:list = None,
     init_params:np.array = None,
     fixed_params:np.array = None,
@@ -144,6 +145,8 @@ def run(
             Path to precomputed PIF if not deriving from AIF
         IAUC_times : np.array = [60,90,120],
             Times (in s) at which to compute IAUC values
+        IAUC_at_peak : bool default False
+            Flag requesting IAUC computed at peak signal   
         param_names : list = None,
             Names of model parameters to be optimised, used to name the output parameter maps
         init_params : np.array = None,
@@ -444,6 +447,9 @@ def run(
     if IAUC_times:
         IAUC_str = ','.join(f'{i:3.2f}' for i in IAUC_times)
         cmd_args += ['--iauc', IAUC_str]
+
+    if IAUC_at_peak:
+        cmd_args += ['--iauc_peak']
 
     if init_maps_dir:
         cmd_args += ['--init_maps', init_maps_dir]

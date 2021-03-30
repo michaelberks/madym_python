@@ -32,6 +32,7 @@ def run(model=None, input_data=None,
     pif_name:str = None,
     #
     IAUC_times:np.array = [60,90,120],
+    IAUC_at_peak:bool = False,
     init_params:np.array = None,
     fixed_params:np.array = None,
     fixed_values:np.array = None,
@@ -120,6 +121,8 @@ def run(model=None, input_data=None,
         
         IAUC_times : np.array default [60,90,120], 
             imes (in s) at which to compute IAUC values
+        IAUC_at_peak : bool default False
+            Flag requesting IAUC computed at peak signal   
         init_params : np.array default None, 
             Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x NParams
         fixed_params : np.array default None,
@@ -356,6 +359,9 @@ def run(model=None, input_data=None,
         IAUC_str = ','.join(f'{i:3.2f}' for i in IAUC_times)
         cmd_args += ['--iauc', IAUC_str]
 
+    if IAUC_at_peak:
+        cmd_args += ['--iauc_peak']
+
     load_params = False
     if init_params is not None:
         if n_samples > 1 and init_params.shape[0] == n_samples:
@@ -443,7 +449,7 @@ def run(model=None, input_data=None,
     error_codes = outputData[:,0:2]
     model_fit = outputData[:,2]
 
-    n_iauc = len(IAUC_times)
+    n_iauc = len(IAUC_times) + int(IAUC_at_peak)
     iauc = outputData[:, 3:3+n_iauc]
 
     #Workout which columns hold parameter values

@@ -12,7 +12,6 @@ from tkinter import filedialog, messagebox
 import warnings
 import subprocess
 from shutil import copyfile
-import gitlab
 
 #-------------------------------------------------------------------------------------------
 def latest_madym_version():
@@ -32,6 +31,19 @@ def latest_madym_version():
      See also: LOCAL_MADYM_VERSION
     
     '''
+    #Not really best practice to have impor tin function, but gitlab
+    #module doesn't port with Anaconda and here is the only place
+    #we need it
+    try:
+        import gitlab
+    except ImportError as error:
+        # Output expected ImportErrors.
+        print("latest_madym_version requires python module gitlab installed.")
+        print("To install run: pip install --upgrade python-gitlab")
+        print("See https://python-gitlab.readthedocs.io/en/stable/install.html for details")
+        print(error.__class__.__name__ + ": " + error.message)
+        return
+
     gl = gitlab.Gitlab('https://gitlab.com/')
     project = gl.projects.list(search='madym_cxx')[0]
     version = project.tags.list()[0].name.rstrip()
