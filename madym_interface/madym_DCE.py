@@ -15,17 +15,20 @@ def run(
     T1_method:str = None,
     dynamic_basename:str = None,
     sequence_format:str = None,
+    sequence_start:str = None,
+    sequence_step:str = None,
     n_dyns:int = 0,
-    input_Ct:bool = True,
-    output_Ct_sig:bool = True,
-    output_Ct_mod:bool = True,
+    input_Ct:bool = False,
+    output_Ct_sig:bool = False,
+    output_Ct_mod:bool = False,
     T1_name:str = None,
     M0_name:str = None,
     B1_name:str = None,
     B1_scaling:float = None,
     B1_correction:bool = False,
     r1_const:float = None,
-    M0_ratio:bool = True,
+    M0_ratio:bool = False,
+    TR:float = None,
     dose:float = None,
     injection_image:int = None,
     hct:float = None,
@@ -36,7 +39,7 @@ def run(
     aif_name:str = None,
     aif_map:str = None,
     pif_name:str = None,
-    IAUC_times:np.array = [60,90,120],
+    IAUC_times:np.array = None,
     IAUC_at_peak:bool = False,
     param_names:list = None,
     init_params:np.array = None,
@@ -49,7 +52,7 @@ def run(
     residuals:str = None,
     max_iter:int = None,
     dyn_noise:bool = False,
-    test_enhancement:bool = True,
+    test_enhancement:bool = False,
     img_fmt_r:str = None,
     img_fmt_w:str = None,
     overwrite:bool = False,
@@ -64,11 +67,10 @@ def run(
     working_directory:str = None,
     dummy_run:bool = False):
     '''
-    MADYM wrapper function to call C++ tool Madym. Fits
-    tracer-kinetic models to DCE time-series stored in Analyze format images,
+    MADYM wrapper function to call C++ tool madym_DCE. Fits
+    tracer-kinetic models to DCE time-series stored in Analyze/NIFTI format images,
     saving the model parameters and modelled concentration time-series also
-    in Analyze format. The result of the system call to Madym is returned.
-    result = run_madym(model, output_dir)
+    in Analyze/NIFTI format. The result of the system call to madym_DCE is returned.
     
     Note: This wrapper allows setting of all optional parameters the full C++ function takes.
     However rather than setting default values for the parameters in this wrapper (which python
@@ -101,13 +103,17 @@ def run(
             Template name for dynamic sequences eg. dynamic/dyn_
         sequence_format : str default None, 
             Format for converting dynamic series index to string, eg %01u
+        sequence_start : int default None, 
+            Start index for dynamic series file names
+        sequence_step : int default None, 
+            Step between indexes of filenames in dynamic series
         n_dyns : int default 0, 
             Number of dynamic sequence maps to load. If <=0, loads all maps in dynamic dir matching -dyn pattern
-        input_Ct : bool default True, 
+        input_Ct : bool default False, 
             Flag specifying input dynamic sequence are concentration (not signal) maps
-        output_Ct_sig : bool = True,
+        output_Ct_sig : bool = False,
             Flag requesting concentration (derived from signal) are saved to output
-        output_Ct_mod : bool = True, 
+        output_Ct_mod : bool = False, 
             Flag requesting modelled concentration maps are saved to output
         T1_name : str default None,
             Path to T1 map
@@ -121,8 +127,10 @@ def run(
             Flag to turn B1 correction on
         r1_const : float = None, 
             Relaxivity constant of concentration in tissue (in ms)
-        M0_ratio : bool = True, 
+        M0_ratio : bool = False, 
             Flag to use ratio method to scale signal instead of supplying M0
+        TR : float default None,  
+            TR of dynamic series (in ms), only required if T1 method is inversion recovery
         dose : float = None, 
             Concentration dose (mmole/kg)
         injection_image : int = None, 
@@ -210,76 +218,17 @@ def run(
        Fitting to concentration time-series. If using a population AIF, you
        must supply a vector of dynamic times. A population AIF (PIF) is used
        if the aifName (pifName) option is left empty.
-       [status,result] = 
-           run_madym("2CXM", 'C:\QBI\mdm_analysis\')
-    
-       Fitting to concentration time-series using a patient specific AIF. The
-       AIF should be defined in a text file with two columns containing the
-       dynamic times and associated AIF value at each times respectively. Pass
-       the full filepath as input
-       [model_params, model_fit, error_codes, model_conc] = 
-           run_madym_lite("2CXM", dyn_conc, 'aifName', 'C:\DCE_data\pt_AIF.txt')
-    
-       Fitting to signals - Set inputCt to false and use options to supply
-       T1 values (and TR, FA, relax_coeff etc) to convert signals to
-       concentration.
-       [model_params, model_fit, error_codes, model_conc, dyn_conc] = 
-           run_madym_lite("2CXM", dyn_signals, 'dyn_times', t,
-               'inputCt', 0, 'T1', T1_vals, 'TR', TR, 'FA', FA)
-    
-       Fixing values in a model - eg to fit a TM instead of ETM, set Vp (the
-       3rd parameter in the ETM to 0)
-       [model_params, model_fit, error_codes, model_conc] = 
-           run_madym_lite("ETM", dyn_conc, 'dyn_times', t,
-               'fixedParams', 3, 'fixedValues', 0.0)
+       [result] = 
+           madym_DCE.run(model = "2CXM", output_dir = 'C:\QBI\mdm_analysis\')
     
      Notes:
        Tracer-kinetic models:
     
        All models available in the main MaDym and MaDym-Lite C++ tools are
-       available to fit. Currently these are:
-     
-       "ETM"
-       Extended-Tofts model. Requires single input AIF. 
-       Outputs 4 params (= initial values for optimisation):
-       {Ktrans=0.2, Ve=0.2, Vp=0.2, tau_a=0.0*} *Arterial offset delay
-       To run a standard Tofts model, use 
-     
-       "DIETM"
-       Extended-Tofts model with dual-input supply. Requires both AIF and PIF.
-       Outputs 6 parameters:
-       {Ktrans=0.2, Ve=0.2, Vp=0.2, fa=0.5, tau_a=0.0, tau_v=0.0*} *Venous delay 
-     
-       "AUEM" formerly "GADOXETATE" 
-       Active Uptake + Efflux Model - Leo's model for gaodxetate contrast in the liver. 
-       Requires both AIF and PIF.
-       Outputs 7 parameters:
-       {Fp=0.6, ve=0.2, ki=0.2, kef=0.1, fa=0.5, tau_a=0.025, tau_v=0}
-    
-       "DISCM" formerly "MATERNE"
-       Dual-Input Single Compartment Model
-       Requires both AIF and PIF.
-       {Fp=0.6, fa=0.5, k2=1.0, tau_a=0.025, tau_v=0}
-     
-       "2CXM"
-       2-compartment exchange model. Single AIF input.
-       Outputs 5 parameters:
-       { Fp=0.6, PS=0.2, v_e=0.2, v_p=0.2, tau_a=0}
-     
-       "DI2CXM"
-       Dual-input version of two-compartment exchange model. Requires both AIF and PIF.
-       {Fp=0.6, PS=0.2, v_e=0.2, v_p=0.2, fa0.5, tau_a=0, tau_v=0 }
-     
-       "DIBEM"
-       Dual-Input, Bi-Exponential Model that fits the functional form of the
-       IRF directly, and can be reduced to any of the (DI)2CXM, GADOXETATE, 
-       MATERNE or TM (but not ETM) models through appropriate fixing of 
-       parameters. See DI-IRF notes on Matlab repository wiki for further
-       explanation, and see functions TWO_CXM_PARAMS_MODEL_TO_PHYS and
-       ACTIVE_PARAMS_MODEL_TO_PHYS for converting the DIRRF outputs into 
-       physiologically meaningful parameters.
-       Outputs 7 parameters: 
-       {Fpos=0.2, Fneg=0.2, Kpos=0.5, Kneg=4.0, fa=0.5, tau_a=0.025, tau_v=0}
+       available to fit. 
+
+       See the madym_cxx project wiki for more details:
+        https://gitlab.com/manchester_qbi/manchester_qbi_public/madym_cxx/-/wikis/dce_models
     
      Created: 20-Feb-2019
      Author: Michael Berks 
@@ -322,50 +271,47 @@ def run(
     if sequence_format:
         cmd_args += ['--sequence_format', sequence_format]
 
+    if sequence_start is not None:
+        cmd_args += ['--sequence_start', str(sequence_start)]
+
+    if sequence_step is not None:
+        cmd_args += ['--sequence_step', str(sequence_step)]
+
     if n_dyns > 0:
         cmd_args += ['-n', str(n_dyns)]
 
-    #Now set any args that require option inputs
     if input_Ct:
         cmd_args += ['--Ct']
         
-    else: #Below are only needed if input is signals
+    #T1/M0 options to load from maps
+    if T1_name:
+        cmd_args += ['--T1', T1_name]
+                    
+    #And if we're not using the ratio method, an M0 map
+    if M0_ratio:
+        cmd_args += ['--M0_ratio']
+
+    if M0_name:
+        cmd_args += ['--M0', M0_name]
+
+    #T1 method to compute from signal inputs
+    if T1_vols:
+        #Set VFA files in the options string
+        t1_str = ','.join(T1_vols)
+        cmd_args += ['--T1_vols', t1_str]
         
-        #Check if we have VFA files
-        if not T1_vols:
-            
-            #If not we need a T1 map
-            if not T1_name:
-                raise ValueError('You must supply either T1 input files '
-                    'to compute baseline T1 or a T1 map')
-            else:
-                cmd_args += ['--T1', T1_name]
-                      
-            #And if we're not using the ratio method, an M0 map
-            if not M0_ratio:
-                if not M0_name:
-                    raise ValueError('If useRatio is off, you must supply an M0 map')
-                else:
-                    cmd_args += ['--M0', M0_name]
+    if T1_noise is not None:
+        cmd_args += ['--T1_noise', f'{T1_noise:5.4f}'] 
 
-        else:
-            #Set VFA files in the options string
-            t1_str = ','.join(T1_vols)
-            cmd_args += ['--T1_vols', t1_str]
-            
-            if T1_noise is not None:
-                cmd_args += ['--T1_noise', f'{T1_noise:5.4f}'] 
-
-            if T1_method:
-                cmd_args += ['--T1_method', T1_method]
-        
-        #Set any other options required to convert signal to concentration
-        if r1_const is not None:
-            cmd_args += ['--r1', f'{r1_const:4.3f}']       
-
-        if M0_ratio:
-            cmd_args += ['--M0_ratio']      
+    if T1_method:
+        cmd_args += ['--T1_method', T1_method]
     
+    #Set any other options required to convert signal to concentration
+    if r1_const is not None:
+        cmd_args += ['--r1', f'{r1_const:4.3f}']  
+
+    if TR:
+        cmd_args += ['--TR', f'{TR:4.3f}']  
 
     #Now go through all the other optional parameters, and if they've been set,
     #set the necessary option flag in the cmd string
@@ -508,12 +454,19 @@ def run(
         return result
 
     #Otherwise we can run the command:
-    print('***********************Madym running **********************')
+    print('***********************Madym DCE running **********************')
     if working_directory:
         print('Working directory = {working_directory}')
         
     print(cmd_str)
-    result = subprocess.run(cmd_args, shell=False, cwd=working_directory)
+    result = subprocess.Popen(cmd_args, shell=False, cwd=working_directory,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    while True:
+        out = result.stdout.readline().decode("utf-8")
+        if out == '' and result.poll() is not None:
+            break
+        if out:
+            print(f"{out}", end='')
 
     #Given we don't actually need to process the result, it might be better here
     #to throw a warning on non-zero return, and just let the caller decide what to

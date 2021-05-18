@@ -11,13 +11,13 @@ def  run(
     config_file = None,
     cmd_exe:str = None,
     T1_vols:list = None,
-    FAs:np.array = None,
+    ScannerParams:np.array = None,
     signals:np.array = None,
   	TR:float = None,
     B1_name:str = None,
     B1_scaling:float = None,
     B1_values:np.array = None,
-    method:str = 'VFA',
+    method:str = None,
     output_dir:str = None,
     output_name:str = 'madym_analysis.dat',
     noise_thresh:float = None,
@@ -34,6 +34,7 @@ def  run(
     img_fmt_w:str = None,
     overwrite:bool = False,
     working_directory:str = None,
+    return_maps:bool = False,
     dummy_run:bool = False
 ):
     '''
@@ -57,14 +58,14 @@ def  run(
             Path to file setting options OR
         cmd_exe : str = None,
             Path to the C++ executable to be run.
-            One of T1_vols or FAs must be set (if neither, the test function will be run on
+            One of T1_vols or ScannerParams must be set (if neither, the test function will be run on
         synthetic data). If T1_vols given, calculate_T1 will be run, if FA values are given
         calculate_T1_lite will be called. In the _lite case, signals must also be set
 
         T1_vols : list default None, 
 			Variable flip angle file names, comma separated (no spaces)
-        FAs : np.array default None, 
-		    FAs, either single vector used for all samples, or 2D array, 1 row per sample
+        ScannerParams : np.array default None, 
+		    ScannerParams, either single vector used for all samples, or 2D array, 1 row per sample
         signals : np.array default None, 
 			Signals associated with each FA, 1 row per sample
         TR : float default None, 
@@ -109,6 +110,8 @@ def  run(
 			Set overwrite existing analysis in output dir ON
         working_directory : str = None,
             Sets the current working directory for the system call, allows setting relative input paths for data
+        return_maps : bool = False
+            If true, attempt to load output T1/M0 maps. Only currently works for Analyze output
         dummy_run : bool default False 
 			Don't run any thing, just print the cmd we'll run to inspect
     
@@ -136,9 +139,8 @@ def  run(
      Notes:
     
        All T1 methods implemented in the main MaDym and MaDym-Lite C++ tools are
-       available to fit. Currently only the variable flip angle method is available:
-     
-       "VFA"
+       available to fit. Currently these are VFA (+ optional B1 correction) and
+       IR
     
      Created: 20-Feb-2019
      Author: Michael Berks 
@@ -147,10 +149,10 @@ def  run(
      Copyright: (C) University of Manchester'''
 
     #Parse inputs, check if using full or lite version 
-    use_lite = T1_vols is None
+    use_lite = config_file is None and T1_vols is None
 
-    if use_lite: 
-        if FAs is None:
+    if use_lite:
+        if ScannerParams is None:
             test()
             return
 
@@ -172,33 +174,32 @@ def  run(
         if use_lite:
             cmd_exe += '_lite'
 
+        cmd_args =  [cmd_exe]
+
     #Set up output directory
     delete_output = False
-    if output_dir is None:
+    if config_file is None and output_dir is None:
         output_temp_dir = TemporaryDirectory()
         output_dir = output_temp_dir.name
         delete_output = True
 
     #Check if fitting to full volumes saved on disk, or directly supplied data
     if not use_lite:
-        #Use calculate_T1 to fit full volumes
-        use_lite = False
+
+        if config_file:
+            cmd_args += ['--config', config_file]
         
         #Set up FA map names
-        nFAs = len(T1_vols)
-        if nFAs < 3:
-            raise ValueError(
-                'Only {nFAs} FA maps supplied, require at least 3 for T1 fitting'
-                )
+        if T1_vols:
+            #Set VFA files in the options string 
+            t1_input_str = ','.join(T1_vols)   
+            cmd_args += ['--T1_vols', t1_input_str]
 
-        #Set VFA files in the options string 
-        fa_str = ','.join(T1_vols)
-    
-        #Initialise command argument
-        cmd_args = [cmd_exe, 
-            '-T', method,
-            '--T1_vols', fa_str,
-            '-o', output_dir]
+        if output_dir:
+            cmd_args += [ '-o', output_dir]
+
+        if method:
+            cmd_args += ['-T', method]
 
         if B1_name:
             cmd_args += ['--B1', B1_name]
@@ -246,31 +247,37 @@ def  run(
             cmd_args += ['--overwrite']
         
     else:
-        #Fit directly supplied FA and signal data using calculate_T1_lite
-        use_lite = True
-        nSamples, nFAs = signals.shape
+        #Fit directly supplied FA and signal data using madym_T1_lite
         
-        #Do error checking on required inputs
-        if nFAs < 3:
-            raise ValueError(
-                'Only {nFAs} FA maps supplied, require at least 3 for T1 fitting'
-                ) 
-        
-        #Check size if FAs - these can either be set per voxels, in which
-        #case FAs should be an nSamples x nFAs array, or for all voxels, in
-        #in which case we'll replicate them into an nSamples x nFAs for the
-        #madym-lite input
-        if FAs.size == nFAs:
-            FAs = np.repeat(FAs.reshape(1,nFAs), nSamples, 0)
+        #Get a name for the temporary file we'll write input data to (we'll hold
+        #off writing anything until we know this isn't a dummy run). For python
+        #we'll do this differently to Matlab, using the tempdir function to create
+        #an input directory we'll then cleanup at the end
+        input_dir = TemporaryDirectory()
+        input_file = os.path.join(input_dir.name, 'signals.dat') 
 
-        elif FAs.shape == (nSamples, nFAs):
-            raise ValueError(
-                'Size of FAs array does not match size of signals array') 
+        nSamples, nScannerParams = signals.shape
+
+        cmd_args += [
+            '--data', input_file,
+            '--n_T1', str(nScannerParams),
+            '--TR', f'{TR:4.3f}',
+            '-o', output_dir,
+            '-O', output_name]
         
-        #TR must be supplied
-        if TR is None:
+        #Check size off scanner params - these can either be set per voxels, in which
+        #case ScannerParams should be an nSamples x nScannerParams array, or for all voxels, in
+        #in which case we'll replicate them into an nSamples x nScannerParams for the
+        #madym-lite input
+        if ScannerParams.size == nScannerParams:
+            ScannerParams = np.repeat(ScannerParams.reshape(1,nScannerParams), nSamples, 0)
+
+        elif ScannerParams.shape == (nSamples, nScannerParams):
             raise ValueError(
-                'You must supply a numeric TR value (in msecs) to fit directly to data')
+                'Size of ScannerParams array does not match size of signals array')
+
+        if method:
+            cmd_args += ['-T', method]
         
         #If B1 values supplied, append them to the signals and set B1_correction
         #flag
@@ -283,40 +290,24 @@ def  run(
 
         if quiet:
             cmd_args += ['--quiet']
-
-        #Get a name for the temporary file we'll write input data to (we'll hold
-        #off writing anything until we know this isn't a dummy run). For python
-        #we'll do this differently to Matlab, using the tempdir function to create
-        #an input directory we'll then cleanup at the end
-        input_dir = TemporaryDirectory()
-        input_file = os.path.join(input_dir.name, 'signals.dat')
-        
-        cmd_args = [
-            cmd_exe,
-            '-T', method,
-            '--data', input_file,
-            '--n_T1', str(nFAs),
-            '--TR', f'{TR:4.3f}',
-            '-o', output_dir,
-            '-O', output_name]
         
         #Check for bad samples, these can screw up Madym as the lite version
         #of the software doesn't do the full range of error checks Madym proper
         #does. So chuck them out now and warn the user
         discard_samples = np.any(
-            np.isnan(FAs) |
-            ~np.isfinite(FAs) |
+            np.isnan(ScannerParams) |
+            ~np.isfinite(ScannerParams) |
             np.isnan(signals) |
             ~np.isfinite(signals), 1)
         
         if np.any(discard_samples):
             warnings.warn('Samples with NaN values found,'
                 'these will be set to zero for model-fitting')
-            FAs[discard_samples,:] = 0
+            ScannerParams[discard_samples,:] = 0
             signals[discard_samples,:] = 0
 
         #Combine input by concatenating horizontally
-        combined_input = np.concatenate((FAs, signals), axis=1)
+        combined_input = np.concatenate((ScannerParams, signals), axis=1)
 
     #Args structure complete, convert to string for printing
     cmd_str = ' '.join(cmd_args)
@@ -343,7 +334,14 @@ def  run(
         print(f'Working directory = {working_directory}')
         
     print(cmd_str)
-    result = subprocess.run(cmd_args, shell=False, cwd=working_directory)
+    result = subprocess.Popen(cmd_args, shell=False, cwd=working_directory,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    while True:
+        out = result.stdout.readline().decode("utf-8")
+        if out == '' and result.poll() is not None:
+            break
+        if out:
+            print(f"{out}", end='')
 
     if use_lite:
         #Now load the output from calculate T1 lite and extract data to match this
@@ -357,9 +355,12 @@ def  run(
         #Tidy up temporary input files
         input_dir.cleanup()
         
-    else:
+    elif return_maps:
         if working_directory is None:
             working_directory = ""
+
+        if output_dir is None:
+            output_dir = ""
 
         T1_path = os.path.join(working_directory,output_dir, 'T1.hdr')
         M0_path = os.path.join(working_directory,output_dir, 'M0.hdr')
@@ -371,7 +372,11 @@ def  run(
             error_codes = read_analyze_img(error_path)
         else:
             error_codes = []
-        
+    else:
+        T1 = []
+        M0 = []
+        error_codes = []
+
     if delete_output:
         #Tidy up temporary output files
         output_temp_dir.cleanup()
@@ -402,7 +407,7 @@ def test(plot_output=True):
     
     #First run this in data mode using calculate_T1_lite:    
     T1_fit, M0_fit,_,_ = run(
-        FAs=FAs, 
+        ScannerParams=FAs, 
         signals=signals,
         TR=TR, 
         method='VFA')
@@ -453,6 +458,7 @@ def test(plot_output=True):
         noise_thresh = 0,
         img_fmt_r = 'ANALYZE',
         img_fmt_w = 'ANALYZE',
+        return_maps = True,
         overwrite = True)
     signals_fit = signal_from_T1(T1_fit, M0_fit, FAs, TR)
     

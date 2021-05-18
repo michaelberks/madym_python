@@ -433,7 +433,14 @@ def run(model=None, input_data=None,
     #At last.. we can run the command
     print('***********************Madym-lite running **********************')
     print(cmd_str)
-    result = subprocess.run(cmd_args, shell=False)
+    result = subprocess.Popen(cmd_args, shell=False,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    while True:
+        out = result.stdout.readline().decode("utf-8")
+        if out == '' and result.poll() is not None:
+            break
+        if out:
+            print(f"{out}", end='')
 
     if result.returncode:        
         input_dir.cleanup()

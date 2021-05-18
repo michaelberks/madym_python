@@ -7,6 +7,27 @@
 
 %autoreload 2
 import numpy as np
+# %%
+from madym_interface import madym_DCE_lite
+
+madym_DCE_lite.run()
+# %%
+from madym_interface import madym_DCE
+madym_DCE.run()
+# %%
+from madym_interface import madym_T1
+madym_T1.run()
+# %%
+from madym_interface import utils
+v1 = utils.local_madym_version()
+v2 = utils.latest_madym_version()
+utils.check_madym_updates()
+# %%
+from madym_interface import install_madym
+install_madym.install_madym()
+# %%
+from madym_interface import run_madym_tests
+run_madym_tests.run_madym_tests()
 #%%
 from dce_models.dce_aif import Aif
 from dce_models.tissue_concentration import signal_to_concentration, concentration_to_signal
@@ -144,24 +165,4 @@ qbi_share_path = filedialog.askdirectory(
 root.destroy()
 print(qbi_share_path)
 
-# %%
-from madym_interface import madym_DCE_lite
 
-madym_DCE_lite.run()
-# %%
-from madym_interface import madym_DCE
-madym_DCE.run()
-# %%
-from madym_interface import madym_T1
-madym_T1.run()
-# %%
-from madym_interface import utils
-v1 = utils.local_madym_version()
-v2 = utils.latest_madym_version()
-utils.check_madym_updates()
-# %%
-from madym_interface import install_madym
-install_madym.install_madym()
-# %%
-from madym_interface import run_madym_tests
-run_madym_tests.run_madym_tests()
