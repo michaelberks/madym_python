@@ -1,0 +1,17 @@
+stages:
+  - fetch-version
+
+before_script:
+  - git fetch --tags
+
+fetch-semantic-version:
+  # Requires Node >= 10.13 version
+  image: node:13
+  stage: fetch-version
+  only:
+    refs:
+    - master
+    - /^release-.*$/
+  script:
+    - npm install @semantic-release/gitlab @semantic-release/exec @semantic-release/changelog
+    - npx semantic-release
