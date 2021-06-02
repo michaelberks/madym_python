@@ -1,6 +1,6 @@
 stages:
-  - fetch-version
   - test
+  - fetch-version
 
 before_script:
   - git fetch --tags
