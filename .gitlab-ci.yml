@@ -6,6 +6,7 @@ before_script:
   - git fetch --tags
 
 pytest:
+  image: python:3.7
   stage: test
   script:
     - pytest --junitxml=report.xml
