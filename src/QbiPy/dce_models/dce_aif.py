@@ -1,22 +1,26 @@
 import numpy as np
 from enum import Enum
 from scipy.interpolate import interp1d
+import warnings
 
 class AifType(Enum):
     STD = 0 #don't use auto() for CSF compatibility
     FILE = 1
     POP = 2
+    ARRAY = 3
 
 class Aif:
 
-    def __init__(self, aif_type:AifType=AifType.POP, filename:str =None, times:np.array=[], 
-                    base_aif:np.array=[], base_pif:np.array=[],
-                    prebolus:int=8, hct:float=0.0, dose:float=0.1):
+    def __init__(self, aif_type:AifType=AifType.POP, filename:str =None,   
+        times:np.array=np.empty(0), 
+        base_aif:np.array=np.empty(0), 
+        base_pif:np.array=np.empty(0),
+        prebolus:int=8, hct:float=0.0, dose:float=0.1):
         # Create some member animals
         self.type_ = aif_type
-        self.times_ = times
-        self.base_aif_ = base_aif
-        self.base_pif_ = base_pif
+        self.times_ = np.array(times)
+        self.base_aif_ = np.array(base_aif)
+        self.base_pif_ = np.array(base_pif)
         self.prebolus_ = prebolus
         self.hct_ = hct
         self.dose_ = dose
@@ -25,10 +29,19 @@ class Aif:
         self.PIF_IRF_ = np.array([])
 
         if aif_type == AifType.POP:
+            if self.base_aif_.size:
+                warnings.warn("base_aif set but will be overwritten because aif_type=POP. Use aif_type=ARRAY if setting base_aif")
+
+            if self.num_times() and (self.num_times() < self.prebolus_):
+                raise ValueError(f'Size of times {self.num_times()} must be at least prebolus {self.prebolus_}')
+
             self.base_aif_ = self.compute_population_AIF()
 
         elif aif_type == AifType.FILE and filename:
-            self.read_AIF(filename, not times)
+            if self.base_aif_.size:
+                warnings.warn("base_aif set but will be overwritten because aif_type=FILE and filename is set. Use aif_type=ARRAY if setting base_aif")
+
+            self.read_AIF(filename, not times.size)
  
  
     def num_times(self):
@@ -77,6 +90,14 @@ class Aif:
         self.base_aif_ = aif_data[:,1]
         if use_file_times:
             self.times_ = aif_data[:,0]
+
+    def write_AIF(self, filename):
+        #Write base AIF to file
+        combined_AIF = np.concatenate(
+            (np.reshape(self.times_, (-1,1)), 
+            np.reshape(self.base_aif_, (-1,1))), axis=1)
+        np.savetxt(filename, combined_AIF)
+
 
     def resample_AIF(self, offset):
         #Resample the AIF given a time offset
