@@ -1,5 +1,6 @@
 stages:
   - fetch-version
+  - test
 
 before_script:
   - git fetch --tags
@@ -15,3 +16,12 @@ fetch-semantic-version:
   script:
     - npm install @semantic-release/gitlab @semantic-release/exec @semantic-release/changelog
     - npx semantic-release
+
+  pytest:
+    stage: test
+    script:
+      - pytest --junitxml=report.xml
+    artifacts:
+      when: always
+      reports:
+        junit: report.xml
