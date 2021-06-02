@@ -17,11 +17,11 @@ fetch-semantic-version:
     - npm install @semantic-release/gitlab @semantic-release/exec @semantic-release/changelog
     - npx semantic-release
 
-  pytest:
-    stage: test
-    script:
-      - pytest --junitxml=report.xml
-    artifacts:
-      when: always
-      reports:
-        junit: report.xml
+pytest:
+  stage: test
+  script:
+    - pytest --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
