@@ -10,11 +10,13 @@ pytest:
   stage: test
   script:
     - pip install pytest numpy scipy scikit-image
-    - pytest --junitxml=report.xml
+    - pytest --junitxml=report.xml --cov=src/ 
+    - coverage xml
   artifacts:
     when: always
     reports:
       junit: report.xml
+      cobertura: coverage.xml
 
 fetch-semantic-version:
   # Requires Node >= 10.13 version
