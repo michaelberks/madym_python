@@ -7,11 +7,11 @@ from PyQt5.QtGui import QImage, qRgb
 import numpy as np
 from scipy import ndimage
 
-from image_io.analyze_format import read_analyze_img
-from tools import qbiqscene as qs
+from QbiPy.image_io.analyze_format import read_analyze_img
+from QbiPy.tools import qbiqscene as qs
 
-from tools.AIF_viewer.AIF_viewer import Ui_AIFViewer    
-from dce_models.dce_aif import Aif, AifType  
+from QbiPy.tools.AIF_viewer.AIF_viewer import Ui_AIFViewer    
+from QbiPy.dce_models.dce_aif import Aif, AifType  
 
 image_format = "*.hdr"
 AIF_format = "*_AIF.txt"

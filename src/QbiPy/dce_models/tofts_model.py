@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp1d
-import dce_models.dce_aif as dce_aif
+import QbiPy.dce_models.dce_aif as dce_aif
 
 #
 #---------------------------------------------------------------------------------

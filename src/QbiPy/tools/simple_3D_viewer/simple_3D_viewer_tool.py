@@ -7,10 +7,10 @@ from PyQt5.QtGui import QImage, qRgb
 import numpy as np
 from scipy import ndimage
 
-from image_io.analyze_format import read_analyze_img
-from tools import qbiqscene as qs
+from QbiPy.image_io.analyze_format import read_analyze_img
+from QbiPy.tools import qbiqscene as qs
 
-from tools.simple_3D_viewer.simple_3D_viewer import Ui_Simple3DViewer      
+from QbiPy.tools.simple_3D_viewer.simple_3D_viewer import Ui_Simple3DViewer      
 
 image_format = "*.hdr"
 

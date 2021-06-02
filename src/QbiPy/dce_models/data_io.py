@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from image_io.analyze_format import read_analyze_img, read_analyze_hdr, read_analyze_xtr
+from QbiPy.image_io.analyze_format import read_analyze_img, read_analyze_hdr, read_analyze_xtr
 
 #-----------------------------------------------------------------------------------
 def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d'):
