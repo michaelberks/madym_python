@@ -6,8 +6,8 @@
 
 import numpy as np
 
-from QbiPy.image_io.analyze_format import read_analyze_img, read_analyze_hdr, read_analyze_xtr
-
+from QbiPy.image_io.analyze_format import read_analyze_img, read_analyze_hdr
+from QbiPy.image_io.xtr_files import read_xtr_file
 #-----------------------------------------------------------------------------------
 def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d'):
     '''GET_DYN_VALS given directory of volumes and ROI mask, get array of
@@ -118,7 +118,7 @@ def get_dyn_xtr_data(root_path, num_vols, index_fmt = '01d'):
 
     for i_vol in range(num_vols):
         vol_path = f"{root_path}{i_vol+1:{index_fmt}}.xtr"
-        xtr_data = read_analyze_xtr(vol_path)
+        xtr_data = read_xtr_file(vol_path)
         dyn_times[i_vol] = xtr_data['TimeStamp']
         dyn_TR[i_vol] = xtr_data['FlipAngle']
         dyn_FA[i_vol] = xtr_data['TR']

@@ -15,14 +15,18 @@ from QbiPy.dce_models import data_io
 #-------------------------------------------------------------------------------
 
 def test_get_dyn_vals():
+    #data_io.get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d')
     assert True
 
 #-------------------------------------------------------------------------------
 def test_get_dyn_vols():
+    #data_io.get_dyn_vols(root_path, num_vols, apply_smoothing=False, 
+    #    index_fmt = '01d', load_headers=False)
     assert True
 
 #-------------------------------------------------------------------------------
 def test_get_dyn_xtr_data():
+    #data_io.get_dyn_xtr_data(root_path, num_vols, index_fmt = '01d')
     assert True
 
 #-------------------------------------------------------------------------------

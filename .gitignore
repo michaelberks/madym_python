@@ -140,3 +140,6 @@ dmypy.json
 #Running run madym can generate annoying audit log trails
 AuditLog.log
 AuditLog.txt
+
+#Local hack around script
+*dummy.py

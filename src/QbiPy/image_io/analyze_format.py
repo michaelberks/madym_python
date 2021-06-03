@@ -8,7 +8,8 @@ import os
 from types import SimpleNamespace
 import warnings
 from datetime import datetime
-import re
+
+from QbiPy.image_io import xtr_files
 
 #Define matching format strings in analyze, numpy and struct
 #and methods for looking up one given the other
@@ -246,10 +247,10 @@ def read_analyze_img(filename: str=None, hdr_data=None,
         #Create correct shape container and put data into
         #indexed elements
         img = np.zeros((n_x,n_y,n_z,n_v), 
-            dtype=format_str_struct_to_numpy(precision))
+            dtype=format_str_analyze_to_numpy(hdr_data.ImgDataType))
 
         #Need to work out how many elements we have
-        element_sz = struct.calcsize(precision+"i")
+        element_sz = struct.calcsize(precision) + struct.calcsize("i")
         n_idx = hdr_data.ImgFileSize / element_sz
 
         #Size of file should divide by element size into an into
@@ -702,96 +703,15 @@ def read_analyze_hdr(filename, byte_order:str = None):
     
     #We're done, return header data
     return hdr_data
-    
-##-----------------------------------------------------------------------------
-##-----------------------------------------------------------------------------
-def read_analyze_xtr(filename: str):
-    '''
-    XTR files are simple text files used by the QBI lab to store extra
-    data not included in analyze header files
-
-    Inputs
-        filename : str
-            Path to xtr file to read
-
-    Outputs
-        xtr_data : dictionary 
-            Dictionary of field/value pairs 
-    '''
-    #Open file and read in each line
-    xtr_lines = []
-    with open(filename, "rt") as xtr_file:
-        for line in xtr_file:
-            xtr_lines.append(line.strip('\n'))
-
-    #Define local auxiliary functions to parse old and new formats
-    ##----------------------------------------------------------------
-    def parse_old_fields(xtr_line):
-        '''
-        '''
-        field,values = xtr_line.split(':')
-        field = field.split(' ')[0]
-        values = values.split(' ')
-
-        if field == 'voxel': #dimensions
-            field_list = ['VoxelDimensionsX','VoxelDimensionsY','VoxelDimensionsZ'] 
-            value_list = [float(v) for v in values[0:4]]
-        elif field == 'flip': #angle
-            field_list = ['FlipAngle']
-            value_list = [float(values[0])]
-        elif field == 'TR':
-            field_list = [field]
-            value_list = [float(values[0])]
-        elif field == 'timestamp':
-            field_list = [field]
-            value_list = [float(values[3])]              
-        else:
-            warnings.warn(f'Field name {field} not recognised.')
-            field_list = [field]
-            value_list = [float(values[0])]
-        return field_list, value_list
-
-    ##----------------------------------------------------------------
-    def read_old_xtr(xtr_lines):
-        '''
-        More of a pain, we have a fixed format, with an annoying timestamp
-        '''
-        xtr_data = dict()
-        for xtr_line in xtr_lines:
-            field_list, value_list = parse_old_fields(xtr_line)            
-            for field,value in zip(field_list, value_list):
-                xtr_data[field] = value
-        return xtr_data
-
-    ##----------------------------------------------------------
-    def read_new_xtr(xtr_lines):
-        '''The new format is easier as everything is a name/value pair. 
-        Just need to convert the values to numbers'''
-        xtr_data = dict()
-        for xtr_line in xtr_lines:
-            #Split line on tabs or white space characters
-            field, value = re.split('\s|\t', xtr_line)
-            xtr_data[field] = float(value)
-        
-        return xtr_data
-    #--------------------------------------------------------
-    
-    #Check if new or old format, then call appropriate reader
-    if xtr_lines[0].split(' ')[0] == "voxel":
-        xtr_data = read_old_xtr(xtr_lines)
-    else:
-        xtr_data = read_new_xtr(xtr_lines)
-    
-    return xtr_data
 
 ##-----------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------
-def write_analyze_img(img_data: np.array, filename: str,
+def write_analyze(img_data: np.array, filename: str,
     scale:float = 1.0, swap_axes:bool = True,
     flip_x: bool = False, flip_y: bool = True,
     voxel_size=[1,1,1], dtype=None, sparse=False):
     '''
-    Wrapper to write_analyze for writing array to analyze 75 format image on disk,
+    Wrapper to write_analyze_img for writing array to analyze 75 format image on disk,
     with some extra options for scaling and transforming data
 
     Inputs
@@ -824,7 +744,7 @@ def write_analyze_img(img_data: np.array, filename: str,
     #Finally, the QBI lab often used to save scaled output, we may want
     #to scale that during loading
     if scale != 1.0:
-      img_data /= scale 
+      img_data *= scale 
 
     #images also get loaded in with the y-axis (after swapping!) reversed
     #(eg upside down). Use the flip_y flag to correct this
@@ -838,12 +758,17 @@ def write_analyze_img(img_data: np.array, filename: str,
         img_data = np.swapaxes(img_data, 0, 1)
 
     #Call write analyze
-    write_analyze(img_data, filename, 
+    write_analyze_img(img_data, filename, 
         voxel_size=voxel_size, dtype=dtype, sparse=sparse)
+
+    #Undo the scaling - not the most efficient, but saves taking a deep
+    #copy
+    if scale != 1.0:
+      img_data /= scale
     
 ###-----------------------------------------------------------------
 ###-----------------------------------------------------------------
-def write_analyze(data, filename, data_size=None, voxel_size=[1,1,1], 
+def write_analyze_img(data, filename, data_size=None, voxel_size=[1,1,1], 
     dtype=None, index=None, default_scaling='pos', sparse=False):
     '''     
     Write array to analyze 75 format image on disk. Also writes matching
@@ -1006,7 +931,7 @@ def write_analyze_hdr(filename, data_size, voxel_size, dtype, scaling, sparse=Fa
     Write analyze format header file containing metadata for the image
     '''
     #Need to be careful, Matlab ints default to i32, my python to i64 (but may depend on environment?)
-    #and likewise for float. In write_analyze we force ints to be i32 and floats to be f32,
+    #and likewise for float. In write_analyze_img we force ints to be i32 and floats to be f32,
     #so if this header function is called separately, we should interpret int/float as a int/float32
     #data type, even though that may not be how those types are implemented in python
     dtype = np.dtype(dtype)
