@@ -5,7 +5,7 @@ import QbiPy.dce_models.dce_aif as dce_aif
 #
 #---------------------------------------------------------------------------------
 def concentration_from_model(aif:dce_aif.Aif, 
-    Ktrans: np.array, Ve: np.array, Vp: np.array, offset: np.array)->np.array:
+    Ktrans: np.array, Ve: np.array, Vp: np.array, tau_a: np.array)->np.array:
     #EXTENDED_KETY_MODEL *Insert a one line summary here*
     #   [model_signals] = extended_kety_model(dyn_times, aif, Ktrans, Vp, Ve)
     #
@@ -18,7 +18,7 @@ def concentration_from_model(aif:dce_aif.Aif,
     #
     #   Ve (1D numpy array, num_voxels): Ve values, 1 for each voxel
     #
-    #   offset (1D numpy array, num_voxels): Ve values, 1 for each voxel
+    #   tau_a (1D numpy array, num_voxels): Ve values, 1 for each voxel
     #
     #
     # Outputs:
@@ -42,7 +42,7 @@ def concentration_from_model(aif:dce_aif.Aif,
     Ktrans = np.atleast_1d(Ktrans)
     Ve = np.atleast_1d(Ve)
     Vp = np.atleast_1d(Vp)
-    offset = np.atleast_1d(offset)
+    tau_a = np.atleast_1d(tau_a)
 
     num_times = aif.times_.size
 
@@ -73,15 +73,15 @@ def concentration_from_model(aif:dce_aif.Aif,
         if Vp.ndim > 1:
             Vp = Vp.reshape(num_voxels)
 
-    if offset.size > 1:
+    if tau_a.size > 1:
         if num_voxels == 1:
-            num_voxels = offset.size
-        elif offset.size != num_voxels:
-            print('Error, size of offset (%d) does not match the size of the other parameter maps (%d)',
-            offset.size, num_voxels)
+            num_voxels = tau_a.size
+        elif tau_a.size != num_voxels:
+            print('Error, size of tau_a (%d) does not match the size of the other parameter maps (%d)',
+            tau_a.size, num_voxels)
             return np.empty(0)
 
-        offset = offset.reshape(num_voxels)
+        tau_a = tau_a.reshape(num_voxels)
 
     #precompute exponential
     k_ep = Ktrans / Ve
@@ -93,7 +93,7 @@ def concentration_from_model(aif:dce_aif.Aif,
     #integral_sum = np.zeros(num_voxels) #1d nv
 
     #Resample the AIF
-    aif_offset = aif.resample_AIF(offset) #nv x nt
+    aif_offset = aif.resample_AIF(tau_a) #nv x nt
     
     #Create container for model concentrations
     C_model = np.zeros([num_voxels, num_times])
@@ -105,7 +105,7 @@ def concentration_from_model(aif:dce_aif.Aif,
         t1 = t[i_t] #scalar
         delta_t = t1 - t[i_t-1] #scalar
         
-        #Compute (offset) combined arterial and vascular input for this time
+        #Compute (tau_a) combined arterial and vascular input for this time
         Ca_t0 = aif_offset[:,i_t-1]#1d n_v
         Ca_t1 = aif_offset[:,i_t]#1d n_v
         

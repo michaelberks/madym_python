@@ -355,7 +355,7 @@ def params_DIBEM_to_AUEM(F_pos, F_neg, K_pos, K_neg,
 #-------------------------------------------------------------------------------
 def concentration_from_model(aif:dce_aif.Aif, 
     K_pos: np.array, K_neg: np.array, F_pos: np.array, F_neg: np.array, 
-    f_a: np.array, aoffset: np.array, voffset: np.array)->np.array:
+    f_a: np.array, tau_a: np.array, tau_v: np.array)->np.array:
     '''
     Compute concentration time-series from model parameters
     Inputs:
@@ -363,9 +363,9 @@ def concentration_from_model(aif:dce_aif.Aif,
     
         K_pos, K_neg, F_pos, F_neg - bi-exponetial IRF parameters
 
-        aoffset - offset times of arrival for conccentraion for Ca_t
+        tau_a - offset times of arrival for conccentraion for Ca_t
 
-        voffset - offset times of arrival for conccentraion for Cv_t
+        tau_v - offset times of arrival for conccentraion for Cv_t
     
      Outputs:
        C_model (2D numpy array, n_t x n_vox) - Model concentrations at each time point for each 
@@ -380,8 +380,8 @@ def concentration_from_model(aif:dce_aif.Aif,
     F_pos = np.atleast_1d(F_pos)
     F_neg = np.atleast_1d(F_neg)
     f_a = np.atleast_1d(f_a)
-    aoffset = np.atleast_1d(aoffset)
-    voffset = np.atleast_1d(voffset)
+    tau_a = np.atleast_1d(tau_a)
+    tau_v = np.atleast_1d(tau_v)
 
     n_t = aif.times_.size
 
@@ -389,7 +389,7 @@ def concentration_from_model(aif:dce_aif.Aif,
 
     #Check dimensions of parameters match each other
     n_vox = max([p.size for p in
-        [K_pos,K_neg,F_pos,F_neg,f_a,aoffset,voffset]])
+        [K_pos,K_neg,F_pos,F_neg,f_a,tau_a,tau_v]])
 
     if K_pos.size > 1 and K_pos.size != n_vox:
         print('Error, size of K_pos (#d) does not match the size of the other parameters (#d)',
@@ -422,21 +422,21 @@ def concentration_from_model(aif:dce_aif.Aif,
     if F_neg.ndim > 1:
         F_neg.shape = n_vox
 
-    if aoffset.size > 1 and aoffset.size != n_vox:
-        print('Error, size of aoffset (#d) does not match the size of the other parameters (#d)',
-        aoffset.size, n_vox)
+    if tau_a.size > 1 and tau_a.size != n_vox:
+        print('Error, size of tau_a (#d) does not match the size of the other parameters (#d)',
+        tau_a.size, n_vox)
         return np.empty(0)
 
-    if aoffset.ndim > 1:
-        aoffset.shape = n_vox
+    if tau_a.ndim > 1:
+        tau_a.shape = n_vox
 
-    if voffset.size > 1 and voffset.size != n_vox:
-        print('Error, size of voffset (#d) does not match the size of the other parameters (#d)',
-        voffset.size, n_vox)
+    if tau_v.size > 1 and tau_v.size != n_vox:
+        print('Error, size of tau_v (#d) does not match the size of the other parameters (#d)',
+        tau_v.size, n_vox)
         return np.empty(0)
 
-    if voffset.ndim > 1:
-        voffset.shape = n_vox
+    if tau_v.ndim > 1:
+        tau_v.shape = n_vox
     f_v = 1 - f_a
 
     #Get AIF and PIF, labelled in model equation as Ca_t and Cv_t
@@ -445,16 +445,16 @@ def concentration_from_model(aif:dce_aif.Aif,
     t = aif.times_
 
     #Resample the AIF
-    Ca_t = aif.resample_AIF(aoffset) #nv x nt
+    Ca_t = aif.resample_AIF(tau_a) #nv x nt
 
     resample_AIF = np.any(f_a)
     if resample_AIF:
-        Ca_t = aif.resample_AIF(aoffset)
+        Ca_t = aif.resample_AIF(tau_a)
     else:
         Ca_t = np.zeros((n_vox,n_t))
 
     if np.any(f_v):
-        Cv_t = aif.resample_PIF(voffset, ~resample_AIF, True)
+        Cv_t = aif.resample_PIF(tau_v, ~resample_AIF, True)
     else:
         Cv_t = np.zeros((n_vox,n_t))
 
