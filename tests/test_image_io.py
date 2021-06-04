@@ -108,7 +108,7 @@ def test_analyze_write_read_format(img, format, sparse):
     #Check read image matches original
     print(f"Test read: format {format}{sparse_str}")
     assert img.shape == img_r.shape
-    assert np.all(np.abs(img - img_r) < 1e-4)
+    np.testing.assert_almost_equal(img, img_r, 6)
 
 def test_analyze_write_read_flip():
     #Create temp location for the read/write
@@ -135,7 +135,7 @@ def test_analyze_write_read_flip():
                 #Check read image matches original
                 print(f"Test read: flip ({flip_x}, {flip_y}, {swap_axes})")
                 assert img_integer.shape == img_r.shape
-                assert np.all(img_integer == img_r)
+                np.testing.assert_equal(img_integer, img_r)
 
     temp_dir.cleanup()
 

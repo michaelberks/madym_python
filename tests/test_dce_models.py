@@ -12,22 +12,86 @@ sys.path.insert(0,
 #-------------------------------------------------------------------------------
 # Tests for data_io module
 from QbiPy.dce_models import data_io
+from QbiPy.image_io import analyze_format, xtr_files
 #-------------------------------------------------------------------------------
 
+def write_sequence_volumes(nDyns):
+    C_t = np.random.randn(2,2,2,nDyns)
+
+    #Create a temporary directory where we'll run these tests, which we can then cleanup
+    #easily at the end
+    temp_dir = TemporaryDirectory()
+    C_t_root = os.path.join(temp_dir.name, 'Ct_')
+    for i_dyn in range(nDyns):
+        
+        #Write out 1x1 concentration maps and xtr files
+        analyze_format.write_analyze(
+            C_t[:,:,:,i_dyn], f'{C_t_root}{i_dyn+1}.hdr')
+
+    return C_t, temp_dir, C_t_root
+
+def write_sequence_xtr(nDyns, FA, TR):
+    t = np.linspace(0, 5, nDyns)
+    noise = np.random.randn(nDyns)
+
+    #Create a temporary directory where we'll run these tests, which we can then cleanup
+    #easily at the end
+    temp_dir = TemporaryDirectory()
+    C_t_root = os.path.join(temp_dir.name, 'Ct_')
+    for i_dyn in range(nDyns):
+        
+        #Write out 1x1 concentration maps and xtr files
+        timestamp = xtr_files.mins_to_timestamp(t[i_dyn])
+
+        xtr_files.write_xtr_file(
+            f'{C_t_root}{i_dyn+1}.xtr', append=False,
+            FlipAngle=FA,
+            TR=TR,
+            TimeStamp=timestamp,
+            NoiseSigma=noise[i_dyn])
+
+    return t, noise, temp_dir, C_t_root
+
 def test_get_dyn_vals():
-    #data_io.get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d')
-    assert True
+    n_dyns = 50
+    C_t, temp_dir, C_t_root = write_sequence_volumes(n_dyns)
+    
+    roi = C_t[:,:,:,0] > 0
+    n_pos = np.sum(roi)
+    roi_name = os.path.join(temp_dir.name, 'roi.hdr')
+    analyze_format.write_analyze(roi, roi_name)
+
+    C_t_pos1 = data_io.get_dyn_vals(C_t, n_dyns, roi)
+    C_t_pos2 = data_io.get_dyn_vals(C_t, n_dyns, roi_name)
+    C_t_pos3 = data_io.get_dyn_vals(C_t_root, n_dyns, roi_name)
+    temp_dir.cleanup()
+
+    assert C_t_pos1.shape == (n_pos, n_dyns)
+    np.testing.assert_equal(C_t_pos1, C_t_pos2)
+    np.testing.assert_almost_equal(C_t_pos1, C_t_pos3, 6)
 
 #-------------------------------------------------------------------------------
 def test_get_dyn_vols():
-    #data_io.get_dyn_vols(root_path, num_vols, apply_smoothing=False, 
-    #    index_fmt = '01d', load_headers=False)
-    assert True
+    n_dyns = 50
+    C_t, temp_dir, C_t_root = write_sequence_volumes(n_dyns)
+    C_t_in, C_t_hdrs = data_io.get_dyn_vols(C_t_root, n_dyns)
+    np.testing.assert_almost_equal(C_t, C_t_in)
+    assert len(C_t_hdrs) == n_dyns
 
 #-------------------------------------------------------------------------------
 def test_get_dyn_xtr_data():
-    #data_io.get_dyn_xtr_data(root_path, num_vols, index_fmt = '01d')
-    assert True
+    n_dyns = 50
+    FA = 20
+    TR = 3.5
+    t, noise, temp_dir, C_t_root = write_sequence_xtr(n_dyns, FA, TR)
+
+    dyn_times, dyn_TR, dyn_FA, dyn_noise = data_io.get_dyn_xtr_data(
+        C_t_root, n_dyns)
+    temp_dir.cleanup()
+    
+    np.testing.assert_almost_equal(FA, dyn_FA, 6)
+    np.testing.assert_almost_equal(TR, dyn_TR, 6)
+    np.testing.assert_almost_equal(noise, dyn_noise, 6)
 
 #-------------------------------------------------------------------------------
 # Tests for dce_aif module
@@ -72,25 +136,25 @@ def test_aif_set_initial_file():
 
     temp_dir.cleanup()
 
-    assert np.all(aif_in.base_aif_ == base_aif)
-    assert np.all(aif_in.times_ == times)
-    assert np.all(aif_in_t.base_aif_ == base_aif)
-    assert np.all(aif_in_t.times_ == times2)
+    np.testing.assert_equal(aif_in.base_aif_, base_aif)
+    np.testing.assert_equal(aif_in.times_, times)
+    np.testing.assert_equal(aif_in_t.base_aif_, base_aif)
+    np.testing.assert_equal(aif_in_t.times_, times2)
 
 def test_aif_set_initial_times():
     times = np.arange(10)
     aif = dce_aif.Aif(times = times)
-    assert np.all(aif.times_ == times)
+    np.testing.assert_equal(aif.times_, times)
 
 def test_aif_set_initial_base_aif():
     base_aif = np.array([0, 0, 1, 0.5, 0.2])
     aif = dce_aif.Aif(base_aif=base_aif, aif_type=dce_aif.AifType.ARRAY)
-    assert np.all(aif.base_aif_ == base_aif)
+    np.testing.assert_equal(aif.base_aif_, base_aif)
 
 def test_aif_set_initial_base_pif():
     base_pif = np.array([0, 0, 1, 0.5, 0.2])
     aif = dce_aif.Aif(base_pif=base_pif)
-    assert np.all(aif.base_pif_ == base_pif)
+    np.testing.assert_equal(aif.base_pif_, base_pif)
 
 def test_aif_set_initial_prebolus():
     aif = dce_aif.Aif(prebolus=5)
