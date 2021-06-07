@@ -7,7 +7,7 @@ before_script:
   - git fetch --tags
 
 pytest:
-  image: python:3.7
+  image: python:3.8
   stage: test
   script:
     - pip install pytest pytest-cov numpy scipy scikit-image
