@@ -191,3 +191,10 @@ def test_format_specifiers(ana_str):
     #format_str_numpy_to_struct(np_str)
     #format_str_struct_to_numpy(struct_str)
     
+def test_big_endian():
+    #Because we never write to big-endian, our only way of testing
+    #is to load in an old big-endian image we have
+    img_path = os.path.join(os.path.dirname(__file__), 'dyn_1')
+    img,hdr = analyze_format.read_analyze(img_path)
+    assert img.shape == (128,128,25)
+    assert hdr.ByteOrder == 'ieee-be'

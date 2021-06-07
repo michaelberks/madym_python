@@ -33,8 +33,8 @@ def check_param_size(**kwargs):
             raise ValueError(
                 f'Error, size of {param_name} ({param.size}) does not match the size of the other parameters ({n_vox})')
     
-    return n_vox, *kwargs.values()
-
+    return (n_vox, *kwargs.values())
+    
 def check_param_shape(**kwargs):
     '''
     For parameter conversion, we accepts parameter inputs as either
@@ -66,6 +66,6 @@ def check_param_shape(**kwargs):
     if shape is None: #all inputs were scalar...
         shape = (1)
 
-    return shape, *kwargs.values()
+    return (shape, *kwargs.values())
 
     

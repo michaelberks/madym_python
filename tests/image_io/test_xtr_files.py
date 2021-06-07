@@ -37,4 +37,14 @@ def test_xtr():
     assert TE == pytest.approx(xtr_data['TE'])
     assert time == pytest.approx(xtr_data['TimeStamp'])
     temp_dir.cleanup()
-    
+
+def test_xtr_old():
+    #Becuase we don't write to old format, we can only test read 
+    #by reading in an old format file
+    xtr_path = os.path.join(os.path.dirname(__file__), 'dyn_1.xtr')
+    xtr_data = xtr_files.read_xtr_file(xtr_path)
+    assert xtr_data['FlipAngle'] == 20.0
+    assert xtr_data['TR'] == 4.0
+
+def test_mins_to_timestamp():
+    assert xtr_files.mins_to_timestamp(1.0) == 100.0
