@@ -10,13 +10,26 @@ pytest:
   stage: test
   script:
     - pip install pytest pytest-cov numpy scipy scikit-image
-    - pytest --junitxml=report.xml --cov=src/ 
+    - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --junitxml=report.xml 
     - coverage xml
   artifacts:
     when: always
+    paths:
+    - htmlcov/
     reports:
       junit: report.xml
       cobertura: coverage.xml
+
+pages:
+  stage: test
+  script:
+  - mv htmlcov/ public
+  artifacts:
+    paths:
+    - public
+  only:
+    - master
+    - /^release-.*$/
 
 fetch-semantic-version:
   # Requires Node >= 10.13 version

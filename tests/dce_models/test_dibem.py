@@ -15,7 +15,7 @@ from QbiPy.dce_models import dibem
 from QbiPy.dce_models import dce_aif
 #-------------------------------------------------------------------------------
 
-def test_dibem_params_AUEM():
+def test_params_AUEM():
     #Test consistency of conversion to/from DIBEM
     F_p = 1.0
     v_ecs = 0.2 
@@ -37,7 +37,7 @@ def test_dibem_params_AUEM():
     assert k_i == pytest.approx(k_i3)
     assert k_ef == pytest.approx(k_ef3)
 
-def test_dibem_params_2CXM():
+def test_params_2CXM():
     F_p = 1.0
     PS = 0.2 
     v_e = 0.2 
@@ -60,7 +60,7 @@ def test_dibem_params_2CXM():
     assert v_e == pytest.approx(v_e3)
     assert v_p == pytest.approx(v_p3)
 
-def test_dibem_concentration_from_model():
+def test_concentration_from_model_scalar():
     times = np.linspace(0, 6, 50)
     aif = dce_aif.Aif(times = times)
     F_pos = 0.2
@@ -76,4 +76,22 @@ def test_dibem_concentration_from_model():
         f_a, tau_a, tau_v
     )
     assert C_t.size == times.size
+    assert np.all(np.isfinite(C_t))
+
+def test_concentration_from_array():
+    times = np.linspace(0, 6, 50)
+    aif = dce_aif.Aif(times = times)
+    F_pos = [0.2, 0.25]
+    F_neg = [0.2, 0.25] 
+    K_pos = [0.5, 0.55] 
+    K_neg = [4.0, 4.5] 
+    f_a = 0.5 
+    tau_a = 0.1 
+    tau_v = 0.05
+    C_t = dibem.concentration_from_model(
+        aif, 
+        F_pos, F_neg, K_pos, K_neg, 
+        f_a, tau_a, tau_v
+    )
+    assert C_t.size == 2*times.size
     assert np.all(np.isfinite(C_t))

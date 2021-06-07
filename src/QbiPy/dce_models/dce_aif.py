@@ -49,14 +49,14 @@ class Aif:
         return self.times_.size
 
     def compute_population_AIF(self, offset=0):
+        #If we don't have times set, do nothing
+        if not self.num_times():
+            return
+
         #Compute population AIF using GMP's method
         offset = np.atleast_2d(offset)
         n_v = offset.size
         offset.shape = (n_v,1)
-
-        #If we don't have times set, do nothing
-        if not self.num_times():
-            return
 
         prebolus_time = self.times_[self.prebolus_-1]
         t_offset = self.times_.reshape(1, self.num_times()) \
@@ -100,6 +100,9 @@ class Aif:
 
 
     def resample_AIF(self, offset):
+        if not self.num_times():
+            raise RuntimeError("Can't resample AIF until times are set")
+
         #Resample the AIF given a time offset
         offset = np.atleast_2d(offset)
         n_v = offset.size
@@ -109,7 +112,7 @@ class Aif:
             self.resampled_AIF_ = self.compute_population_AIF(offset)
             return self.resampled_AIF_
 
-        elif self.type_ == AifType.FILE:
+        elif self.type_ == AifType.FILE or self.type_ == AifType.ARRAY:
             t_offset = self.times_.reshape(1, self.num_times()) \
                 - offset #output is nv x nt
 
@@ -119,6 +122,9 @@ class Aif:
             return self.resampled_AIF_
 
     def resample_PIF(self, offset, offsetAIF, resampleIRF):
+        if not self.num_times():
+            raise RuntimeError("Can't resample PIF until times are set")
+
         #Resample the AIF given a time offset
         n_t = self.num_times()
         offset = np.atleast_2d(offset)

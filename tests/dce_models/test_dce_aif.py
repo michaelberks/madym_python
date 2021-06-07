@@ -14,11 +14,11 @@ sys.path.insert(0,
 from QbiPy.dce_models import dce_aif
 #-------------------------------------------------------------------------------
 
-def test_aif_default_aif_type():
+def test_default_aif_type():
     aif = dce_aif.Aif()
     assert aif.type_ == dce_aif.AifType.POP 
 
-def test_aif_set_initial_type():
+def test_set_initial_type():
     aif_POP = dce_aif.Aif(aif_type=dce_aif.AifType.POP)
     aif_STD = dce_aif.Aif(aif_type=dce_aif.AifType.STD)
     aif_FILE = dce_aif.Aif(aif_type=dce_aif.AifType.FILE)
@@ -29,7 +29,7 @@ def test_aif_set_initial_type():
     assert aif_FILE.type_ == dce_aif.AifType.FILE
     assert aif_ARRAY.type_ == dce_aif.AifType.ARRAY
 
-def test_aif_set_initial_file():
+def test_set_initial_file():
     #This also test read and write AIF
     times = np.arange(10)
     base_aif = 0.1*np.arange(10)  
@@ -57,51 +57,63 @@ def test_aif_set_initial_file():
     np.testing.assert_equal(aif_in_t.base_aif_, base_aif)
     np.testing.assert_equal(aif_in_t.times_, times2)
 
-def test_aif_set_initial_times():
+def test_set_initial_times():
     times = np.arange(10)
     aif = dce_aif.Aif(times = times)
     np.testing.assert_equal(aif.times_, times)
 
-def test_aif_set_initial_base_aif():
+def test_set_initial_base_aif():
     base_aif = np.array([0, 0, 1, 0.5, 0.2])
     aif = dce_aif.Aif(base_aif=base_aif, aif_type=dce_aif.AifType.ARRAY)
     np.testing.assert_equal(aif.base_aif_, base_aif)
 
-def test_aif_set_initial_base_pif():
+def test_set_initial_base_pif():
     base_pif = np.array([0, 0, 1, 0.5, 0.2])
     aif = dce_aif.Aif(base_pif=base_pif)
     np.testing.assert_equal(aif.base_pif_, base_pif)
 
-def test_aif_set_initial_prebolus():
+def test_set_initial_prebolus():
     aif = dce_aif.Aif(prebolus=5)
     assert aif.prebolus_ == 5
 
-def test_aif_set_initial_hct():
+def test_set_initial_hct():
     aif = dce_aif.Aif(hct=0.4)
     assert aif.hct_ == 0.4
 
-def test_aif_set_initial_dose():
+def test_set_initial_dose():
     aif = dce_aif.Aif(dose=0.15)
     assert aif.dose_ == 0.15
 
-def test_aif_num_times():
+def test_num_times():
     times = np.arange(5)
     aif = dce_aif.Aif(times = times, aif_type=dce_aif.AifType.ARRAY)
     empty_aif = dce_aif.Aif()
     assert aif.num_times() == times.size
     assert empty_aif.num_times() == 0
 
-def test_aif_compute_population_AIF():
+def test_compute_population_AIF():
     times = np.arange(100)
     aif = dce_aif.Aif(times = times, aif_type=dce_aif.AifType.POP)
     assert aif.base_aif_.size == times.size
 
-def test_aif_resample_AIF():
-    times = np.arange(100)
+def test_resample_AIF_pop():
+    n_t = 100
+    times = np.linspace(0, 6, n_t)
     aif = dce_aif.Aif(times = times, aif_type=dce_aif.AifType.POP)
-    aif.resample_AIF(0.1)
+    assert aif.resample_AIF(0.1).size == n_t
 
-def test_aif_resample_PIF():
-    times = np.arange(100)
+def test_resample_AIF_array():
+    n_t = 100
+    times = np.linspace(0, 6, n_t)
+    aif_p = dce_aif.Aif(times = times, aif_type=dce_aif.AifType.POP)
+    base_aif = aif_p.base_aif_.copy()
+    aif = dce_aif.Aif(
+        times=times, base_aif=base_aif, aif_type=dce_aif.AifType.ARRAY)
+    assert aif.resample_AIF(0.1).size == n_t
+
+def test_resample_PIF():
+    n_t = 100
+    times = np.linspace(0, 6, n_t)
     aif = dce_aif.Aif(times = times, aif_type=dce_aif.AifType.POP)
-    aif.resample_PIF(0.1, True, True)
+    assert aif.resample_PIF(0.1, True, True).size == n_t
+    
