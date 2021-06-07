@@ -1,5 +1,6 @@
 stages:
   - test
+  - pages
   - fetch-version
 
 before_script:
@@ -10,8 +11,7 @@ pytest:
   stage: test
   script:
     - pip install pytest pytest-cov numpy scipy scikit-image
-    - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --junitxml=report.xml 
-    - coverage xml
+    - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --cov-report=xml --junitxml=report.xml
   artifacts:
     when: always
     paths:
@@ -21,7 +21,7 @@ pytest:
       cobertura: coverage.xml
 
 pages:
-  stage: test
+  stage: pages
   script:
   - mv htmlcov/ public
   artifacts:
