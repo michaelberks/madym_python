@@ -20,4 +20,46 @@ sys.path.insert(0,
 
 from QbiPy.image_io import jim_io
 def test_write_read_jim_roi():
-    assert True
+    jim_path = os.path.join(os.path.dirname(__file__), 'jim.roi')
+    jim_shape = (16,16,4)
+    jim_spacing = (2.0, 2.0, 2.0 )
+    jim_roi = jim_io.read_jim_roi(jim_path, jim_shape, jim_spacing,
+        make_mask=True)
+
+    temp_dir = TemporaryDirectory()
+    scale = (jim_spacing[0], jim_spacing[1])
+    offset = (jim_shape[0]/2, jim_shape[1]/2)
+
+    jim_outpath1 = os.path.join(temp_dir.name, 'jim1.roi')
+    jim_io.write_jim_roi(jim_roi[1], 0.0, jim_spacing, jim_outpath1)
+        
+    jim_outpath2 = os.path.join(temp_dir.name, 'jim2.roi')
+    contour_list = [(info['roi_xy'],info['slice']+1) for info in jim_roi[0]]
+    jim_io.write_jim_roi_from_list(
+        contour_list, jim_outpath2, scale=scale, offset=offset)
+
+    jim_outpath3 = os.path.join(temp_dir.name, 'jim3.roi')
+    jim_io.write_jim_roi_from_slice_info(
+        jim_roi[0], jim_outpath3, scale=scale, offset=offset)
+
+    jim_roi1 = jim_io.read_jim_roi(jim_outpath1, jim_shape, jim_spacing,
+        make_mask=True)
+
+    jim_roi2 = jim_io.read_jim_roi(jim_outpath2, jim_shape, jim_spacing,
+        make_mask=True)
+
+    jim_roi3 = jim_io.read_jim_roi(jim_outpath3, jim_shape, jim_spacing,
+        make_mask=True)
+
+    temp_dir.cleanup()
+
+    assert len(jim_roi[0]) == len(jim_roi1[0])
+    assert len(jim_roi[0]) == len(jim_roi2[0])
+    assert len(jim_roi[0]) == len(jim_roi3[0])
+
+    def overlap(r1, r2):
+        return np.sum(r1 & r2) / np.sum(r1 | r2)
+
+    assert overlap(jim_roi[1], jim_roi1[1]) > 0.75
+    np.testing.assert_equal(jim_roi[1], jim_roi2[1])
+    np.testing.assert_equal(jim_roi[1], jim_roi3[1])
