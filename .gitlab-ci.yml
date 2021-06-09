@@ -17,7 +17,7 @@ pytest:
     when: always
     paths:
     - htmlcov/
-    - html
+    - html/
     reports:
       junit: report.xml
       cobertura: coverage.xml
