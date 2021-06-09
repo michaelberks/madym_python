@@ -7,12 +7,9 @@ before_script:
   - git fetch --tags
 
 pytest:
-  image: python:3.7
+  image: registry.gitlab.com/manchester_qbi/manchester_qbi_public/qbipy/qbipy_depends
   stage: test
   script:
-    - apt update
-    - apt install -y libgl1-mesa-glx
-    - pip install pytest pytest-cov numpy scipy scikit-image PyQt5 pdoc3==0.8.1
     - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --cov-report=xml --junitxml=report.xml
     - pdoc3 src/QbiPy --html --force
   artifacts:
@@ -27,6 +24,7 @@ pytest:
 pages:
   stage: pages
   script:
+  - mkdir public
   - mkdir public/other
   - mv htmlcov/ public/other
   - mv html/QbiPy public
