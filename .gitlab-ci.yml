@@ -26,8 +26,8 @@ pages:
   script:
   - mkdir public
   - mkdir public/other
-  - mv htmlcov/ public/other/
-  - mv html/QbiPy/ public/
+  - mv htmlcov/* public/other/
+  - mv html/QbiPy/* public/
   artifacts:
     paths:
     - public
