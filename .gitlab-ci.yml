@@ -12,7 +12,7 @@ pytest:
   script:
     - apt update
     - apt install -y libgl1-mesa-glx
-    - pip install pytest pytest-cov numpy scipy scikit-image pdoc3==0.8.1
+    - pip install pytest pytest-cov numpy scipy scikit-image PyQt5 pdoc3==0.8.1
     - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --cov-report=xml --junitxml=report.xml
     - pdoc3 src/QbiPy --html --force
   artifacts:
