@@ -1,6 +1,5 @@
 stages:
   - test
-  - makedocs
   - pages
   - fetch-version
 
@@ -11,26 +10,19 @@ pytest:
   image: python:3.7
   stage: test
   script:
-    - pip install pytest pytest-cov numpy scipy scikit-image pdoc3
+    - apt update
+    - apt install -y libgl1-mesa-glx
+    - pip install pytest pytest-cov numpy scipy scikit-image pdoc3==0.8.1
     - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --cov-report=xml --junitxml=report.xml
-  artifacts:
-    when: always
-    paths:
-    - htmlcov/
-    reports:
-      junit: report.xml
-      cobertura: coverage.xml
-
-makedocs:
-  image: python:3.7
-  stage: makedocs
-  script:
-    - pip install pdoc3
     - pdoc3 src/QbiPy --html --force
   artifacts:
     when: always
     paths:
+    - htmlcov/
     - html/
+    reports:
+      junit: report.xml
+      cobertura: coverage.xml
 
 pages:
   stage: pages
