@@ -1,5 +1,6 @@
 stages:
   - test
+  - makedocs
   - pages
   - fetch-version
 
@@ -12,15 +13,24 @@ pytest:
   script:
     - pip install pytest pytest-cov numpy scipy scikit-image pdoc3
     - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --cov-report=xml --junitxml=report.xml
-    - pdoc3 src/QbiPy --html --force
   artifacts:
     when: always
     paths:
     - htmlcov/
-    - html/
     reports:
       junit: report.xml
       cobertura: coverage.xml
+
+makedocs:
+  image: python:3.7
+  stage: makedocs
+  script:
+    - pip install pdoc3
+    - pdoc3 src/QbiPy --html --force
+  artifacts:
+    when: always
+    paths:
+    - html/
 
 pages:
   stage: pages
