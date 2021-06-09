@@ -1,17 +1,15 @@
 import sys
 import os
 import glob
-from PyQt5.QtWidgets import QApplication, QPushButton, QAction, QMainWindow, QWidget, QMessageBox, QGraphicsScene, QFileDialog
-from PyQt5.QtCore import QObject, Qt, pyqtSlot 
-from PyQt5.QtGui import QImage, qRgb, QFont
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox, QGraphicsScene, QFileDialog
+from PyQt5.QtCore import pyqtSlot 
+from PyQt5.QtGui import QFont
 import numpy as np
-from scipy import ndimage
 
-from image_io.analyze_format import read_analyze_img
-from dce_models.data_io import get_dyn_vals
-from tools import qbiqscene as qs
+from QbiPy.image_io.analyze_format import read_analyze_img
+from QbiPy.dce_models.data_io import get_dyn_vals
 
-from tools.DCE_fit_viewer.DCE_fit_viewer import Ui_DCEFitViewer  
+from QbiPy.tools.DCE_fit_viewer.DCE_fit_viewer import Ui_DCEFitViewer  
 
 image_format = "*.hdr"
 

@@ -4,7 +4,7 @@ def signal_from_T1(T1, M0, FA, TR):
       compute MR signal given T1 and flip angle
        St = signal_from_T1(T1, M0, FA, TR)
     
-     Inputs:
+     Parameters:
           T1 : array_like 
             Input T1. T1, M0 and TR must be scalars or arrays of the same
           size. Arrays will be reshaped to a single column vector
@@ -23,7 +23,7 @@ def signal_from_T1(T1, M0, FA, TR):
             matching size of T1 and M0
     
     
-     Outputs:
+     Returns:
           St - MR signal, signal.size x nFAs
      ''' 
     T1 = np.atleast_2d(T1).reshape(-1,1).astype(float) #Set T1, M0 and TR as col vectors

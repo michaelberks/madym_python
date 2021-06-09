@@ -14,7 +14,7 @@ def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d'):
     time-series for voxels in the ROI
     [times] = get_dyn_vals(root_path, num_vols, roi, index_fmt)
 
-    Inputs:
+    Parameters:
         root_path - folder + filename root where volumes are, or 4D array of loaded volumes
 
         num_vols - number of volumes to load
@@ -24,7 +24,7 @@ def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d'):
         index_fmt ('01d') - format that converts indexes into volume suffix
 
 
-    Outputs:
+    Returns:
         dyn_signals - N_vox x N_times array of time-series for each voxel
       '''
 
@@ -54,7 +54,7 @@ def get_dyn_vols(root_path, num_vols, index_fmt = '01d'):
     Load series of image volumes
     [times] = get_dyn_times(root_path, index_fmt, num_vols)
 
-    Inputs:
+    Parameters:
         root_path - path to each volume to be loaded, so that the full path
         to the i-th volume is [root_path sprintf(index_fmt, i) '.hdr']
 
@@ -63,7 +63,7 @@ def get_dyn_vols(root_path, num_vols, index_fmt = '01d'):
         index_fmt - defines format for indexing of volumes. In most QBi data
         this is just 01d (equivalent to num2str, with no modifiers)
 
-    Outputs:
+    Returns:
         dyn_vols - (Ny, Nx, Nz, Nvols) array containing each dynamic volume
 
         dyn_headers - header information for each volume'''
@@ -90,7 +90,7 @@ def get_dyn_xtr_data(root_path, num_vols, index_fmt = '01d'):
     folder of dynamic volumes
     [times] = get_dyn_times(root_path, index_fmt, num_vols)
 
-    Inputs:
+    Parameters:
         root_path - folder + filename root where volumes are
 
         num_vols - number of volumes to load
@@ -98,7 +98,7 @@ def get_dyn_xtr_data(root_path, num_vols, index_fmt = '01d'):
         index_fmt ('01d') - format that converts indexes into volume suffix
 
 
-    Outputs:
+    Returns:
         dyn_times - 1D array containing the acquisition time of each dynamic volume
 
         dyn_TR - repetition time of dynamic volumes in ms. Given as 1D array although all should be the same

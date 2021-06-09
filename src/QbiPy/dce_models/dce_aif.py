@@ -1,3 +1,13 @@
+'''
+Arterial input function class that supports:
+
+* Reading a AIF from text file
+* Generating a population AIF using the Parker method
+* Passing a vector of AIF values as input
+* Resampling the created AIF with any given delay time
+
+'''
+
 import numpy as np
 from enum import Enum
 from scipy.interpolate import interp1d
@@ -45,10 +55,33 @@ class Aif:
  
  
     def num_times(self):
-        #Return the number of time points
+        '''
+        Return the number of time points in the Aif
+        Parameters:
+            None
+
+        Returns:
+            n_times : int
+                Number of times in the Aif
+        '''
         return self.times_.size
 
     def compute_population_AIF(self, offset=0):
+        '''
+            Compute a population Aif using the Parker method
+            
+            Parameters:
+                offset : float = 0
+                    Delay time at which times_ will be offset
+
+            Returns:
+                pop_aif: np.array
+                    (n_times,1) array of AIF values
+
+            Notes:
+                Requires times_ to have been set
+
+        '''
         #If we don't have times set, do nothing
         if not self.num_times():
             return

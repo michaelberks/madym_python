@@ -15,7 +15,7 @@ def write_xtr_file(xtr_path, append=False, **kwargs):
     #scan flip angle, TR etc)
     #   [] = write_xtr_file(xtr_path, append, **kwargs)
     #
-    # Inputs:
+    # Parameters:
     #      xtr_path - path to write xtr file (typically with extension .xtr)
     #
     #      append - If file already exists, append or overwrite
@@ -23,7 +23,7 @@ def write_xtr_file(xtr_path, append=False, **kwargs):
     #      kwargs - List of fieldname/value pairs
     #
     #
-    # Outputs:
+    # Returns:
     #
     # Example: write_xtr_file('temp.xtr', False, TR=2.4, FlipAngle=20.0,    TimeStamp=12345)
     #
@@ -55,11 +55,11 @@ def read_xtr_file(xtr_path, append=False, **kwargs):
     XTR files are simple text files used by the QBI lab to store extra
     data not included in analyze header files
 
-    Inputs
+    Parameters:
         xtr_path : str
             Path to xtr file to read
 
-    Outputs
+    Returns:
         xtr_data : dictionary 
             Dictionary of field/value pairs 
     '''

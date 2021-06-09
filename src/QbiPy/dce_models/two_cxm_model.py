@@ -13,10 +13,10 @@ def concentration_from_model(aif:dce_aif.Aif,
     params to the bi-exponential parameters, and then call
     DIBEM's concentration_from_model
 
-     Inputs:
+     Parameters:
        aif (Aif object, n_t): object to store and resample arterial input function values (1 for each time point)
     
-     Inputs:
+     Parameters:
           Fp - flow plasma rate
     
           PS - extraction flow
@@ -27,7 +27,7 @@ def concentration_from_model(aif:dce_aif.Aif,
     
           tau_a - tau_a times of arrival for conccentraion for Ca_t
     
-     Outputs:
+     Returns:
        C_model (2D numpy array, n_t x n_vox) - Model concentrations at each time point for each 
        voxel computed from model paramaters
     

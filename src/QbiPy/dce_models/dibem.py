@@ -77,7 +77,7 @@ def params_2CXM_to_DIBEM(F_p, PS, v_e, v_p, using_Fp=False):
     model given input physiological parameters
     [K_pos, K_neg, F_pos, F_neg] = two_cx_params_phys_to_model(F_p, PS, v_e, v_p)
 
-    Inputs:
+    Parameters:
         F_p - flow plasma rate
 
         PS - extraction flow
@@ -86,7 +86,7 @@ def params_2CXM_to_DIBEM(F_p, PS, v_e, v_p, using_Fp=False):
 
         v_p - plasma volume
 
-    Outputs:
+    Returns:
         F_pos, F_neg - scalars in model IRF
 
         K_pos, K_neg - exponents in model IRF
@@ -161,12 +161,12 @@ def params_DIBEM_to_2CXM(F_pos, F_neg, K_pos, K_neg, using_Fp=False):
     model given input physiological parameters
     [F_p, PS, v_e, v_p] = two_cx_params_model_to_phys(K_pos, K_neg, F_pos, F_neg)
 
-    Inputs:
+    Parameters:
         F_pos, F_neg - scalars in 2CXM model IRF
 
         K_pos, K_neg - exponents in 2CXM model IRF
 
-    Outputs:
+    Returns:
         F_p - flow plasma rate
 
         PS - extraction flow
@@ -209,7 +209,7 @@ def params_AUEM_to_DIBEM(F_p, v_ecs, k_i, k_ef, using_Fp=False):
     '''compute the derived parameters for the AUEM given input physiological parameters
    [K_pos, K_neg, F_pos, F_neg] = active_params_phys_to_model(F_p, v_e, k_i, k_ef)
 
-    Inputs:
+    Parameters:
         F_p - flow plasma rate
 
         v_ecs - extra-cellular space (v_i = 1 - v_ecs)
@@ -218,7 +218,7 @@ def params_AUEM_to_DIBEM(F_p, v_ecs, k_i, k_ef, using_Fp=False):
 
         k_ef - efflux rate
 
-    Outputs:
+    Returns:
         F_pos, F_neg - scalars in model IRF
     
         K_pos, K_neg - exponents in model IRF
@@ -259,12 +259,12 @@ def params_DIBEM_to_AUEM(F_pos, F_neg, K_pos, K_neg,
     model given input physiological parameters
     [F_p, v_ecs, k_i, k_ef] = active_params_model_to_phys(K_pos, K_neg, F_pos, F_neg)
 
-    Inputs:
+    Parameters:
         F_pos, F_neg - scalars in 2CXM model IRF
 
         K_pos, K_neg - exponents in 2CXM model IRF
 
-    Outputs:
+    Returns:
         F_p - flow plasma rate
 
         v_ecs - extra-cellular space (v_i = 1 - v_ecs)
@@ -357,7 +357,7 @@ def concentration_from_model(aif:dce_aif.Aif,
     f_a: np.array, tau_a: np.array, tau_v: np.array)->np.array:
     '''
     Compute concentration time-series from model parameters
-    Inputs:
+    Parameters:
         aif (Aif object, n_t): object to store and resample arterial input function values (1 for each time point)
     
         F_pos, F_neg, K_pos, K_neg  - bi-exponetial IRF parameters
@@ -366,7 +366,7 @@ def concentration_from_model(aif:dce_aif.Aif,
 
         tau_v - offset times of arrival for conccentraion for Cv_t
     
-     Outputs:
+     Returns:
        C_model (2D numpy array, n_t x n_vox) - Model concentrations at each time point for each 
        voxel computed from model paramaters
     

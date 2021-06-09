@@ -6,7 +6,7 @@ def signal_to_concentration(S_t: np.array, T1_0: np.array, M0: np.array,
     FA: float, TR: float, relax_coeff: float, use_M0_ratio: int) ->np.array:
     '''
     Convert signal intensity time series to concentrations, based on known imaging and physiological parameters
-     Inputs:
+     Parameters:
        S_t (2D np.array,n_voxels x num_times): Input signal intensity time series
     
        T1_0 (1D np.array, n_voxels): Baseline T1 value associated with each voxel 
@@ -26,7 +26,7 @@ def signal_to_concentration(S_t: np.array, T1_0: np.array, M0: np.array,
        if <= 0, baseline M0 values (eg estimated alongside baseline T1) must be supplied
     
     
-     Outputs:
+     Returns:
           C_t (2D numpy array, n_voxels x n_times): concentration time series, 
     
     '''
@@ -82,7 +82,7 @@ def concentration_to_signal(C_t: np.array, T1_0: np.array, M0: np.array,
     FA: float, TR: float, relax_coeff: float, use_M0_ratio: int = 8)->np.array:
     '''
      Convert concentration time series to signal intensities, based on known imaging and physiological parameters
-     Inputs:
+     Parameters:
        C_t (2D np.array,n_voxels x num_times): Input concentration time series
     
        T1_0 (1D np.array, n_voxels): Baseline T1 value associated with each voxel  
@@ -102,7 +102,7 @@ def concentration_to_signal(C_t: np.array, T1_0: np.array, M0: np.array,
        if <= 0, baseline M0 values (eg estimated alongside baseline T1) must be supplied
     
     
-     Outputs:
+     Returns:
           S_t (2D numpy array, n_voxels x n_times): signal time series, n_voxels x num_times 
     ''' 
 
@@ -158,7 +158,7 @@ def compute_IAUC(C_t: np.array, dyn_times: np.array, aif_injection_image: int = 
     '''
     Compute area under concentration curve for given number of seconds
     
-     Inputs:
+     Parameters:
        C_t (nD np.array, n1 x ... x ni x n_times ): Input concentration time series, can be
        multidimensional, last dimension is time (this allows us to call same function on extracted
        voxel data, 2D images, 3D volumes etc)

@@ -26,10 +26,10 @@ def format_str_analyze_to_struct(ana_str):
     '''
     Convert analyze format string to struct format string
     
-    Inputs:
+    Parameters:
         ana_str : str
             Analyze data type string
-    Outputs:
+    Returns:
         struct_str : str
             Format string used by python's struct class
     '''
@@ -39,10 +39,10 @@ def format_str_analyze_to_numpy(ana_str):
     '''
     Convert analyze format string to struct format string
     
-    Inputs:
+    Parameters:
         ana_str : str
             Analyze data type string
-    Outputs:
+    Returns:
         np_str : str
             Dtype used by numpy
     '''
@@ -52,10 +52,10 @@ def format_str_struct_to_analyze(struct_str):
     '''
     Convert analyze format string to struct format string
     
-    Inputs:
+    Parameters:
     struct_str : str
             Format string used by python's struct class
-    Outputs:
+    Returns:
         ana_str : str
             Analyze data type string
     '''
@@ -65,10 +65,10 @@ def format_str_numpy_to_analyze(np_str):
     '''
     Convert analyze format string to struct format string
     
-    Inputs:
+    Parameters:
         np_str : str
             Dtype used by numpy
-    Outputs:
+    Returns:
         ana_str : str
             Analyze data type string
     '''
@@ -78,10 +78,10 @@ def format_str_struct_to_numpy(struct_str):
     '''
     Convert analyze format string to struct format string
     
-    Inputs:
+    Parameters:
         struct_str : str
             Format string used by python's struct class
-    Outputs:
+    Returns:
         np_str : str
             Dtype used by numpy
     '''
@@ -91,10 +91,10 @@ def format_str_numpy_to_struct(np_str):
     '''
     Convert analyze format string to struct format string
     
-    Inputs:
+    Parameters:
         np_str : str
             Dtype used by numpy
-    Outputs:
+    Returns:
         struct_str : str
             Format string used by python's struct class
     '''
@@ -120,7 +120,7 @@ def read_analyze(filename: str=None,
 
     Wrapper for read_analyze_img and read_analyze_hdr
 
-    Inputs:
+    Parameters:
         filename : str default None
             filename to analyze image/header pair to read. Should be extension
             free, or either of the filename.hdr or filename.img pair. Must be
@@ -136,7 +136,7 @@ def read_analyze(filename: str=None,
         flip_x : bool default False,
             If true, flips the output image about array axis 1 (horizontal flip)
 
-    Outputs:
+    Returns:
         img : np.array
             Numpy array of image data in data type specified by output data. Will
             be 2, 3 or 4D (n_y, n_x, n_z = 1, n_v = 1)
@@ -168,7 +168,7 @@ def read_analyze_img(filename: str=None, hdr_data=None,
     data type of I is consistent with the image data type specified in 
     the metadata obtained from the header file. 
     
-    Inputs:
+    Parameters:
         filename : str default None
             filename to analyze image/header pair to read. Should be extension
             free, or either of the filename.hdr or filename.img pair. Must be
@@ -187,7 +187,7 @@ def read_analyze_img(filename: str=None, hdr_data=None,
         flip_x : bool default False,
             If true, flips the output image about array axis 1 (horizontal flip)
 
-    Outputs:
+    Returns:
         img : np.array
             Numpy array of image data in data type specified by output data. Will
             be 2, 3 or 4D (n_y, n_x, n_z = 1, n_v = 1)
@@ -339,7 +339,7 @@ def read_analyze_hdr(filename, byte_order:str = None):
     data set. FILENAME is a string that specifies the name of the Analyze
     file pair.
 
-    Inputs:
+    Parameters:
         filename : str default None
             filename of analyze header to read. Should be extension
             free, or either of the filename.hdr or filename.img pair.
@@ -348,7 +348,7 @@ def read_analyze_hdr(filename, byte_order:str = None):
             binary data. If None (recommended), tries both and uses whichever
             returns a valid header size field
 
-    Outputs:
+    Returns:
         hdr_data : SimpleNamespace,
             Namespace object with image metadata. The  following is a 
             partial list of fields in the hdr_data structure:
@@ -714,7 +714,7 @@ def write_analyze(img_data: np.array, filename: str,
     Wrapper to write_analyze_img for writing array to analyze 75 format image on disk,
     with some extra options for scaling and transforming data
 
-    Inputs
+    Parameters:
         img_data: np.array, 
             Input image array to write
         filename: str,
@@ -774,7 +774,7 @@ def write_analyze_img(data, filename, data_size=None, voxel_size=[1,1,1],
     Write array to analyze 75 format image on disk. Also writes matching
     header data file
 
-    Inputs
+    Parameters:
         data : np.array, 
             Data can be (3d,4d) array or vector. If data is a 
             vector then data_size must be included. The data can also

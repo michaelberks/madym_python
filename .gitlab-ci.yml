@@ -10,12 +10,14 @@ pytest:
   image: python:3.7
   stage: test
   script:
-    - pip install pytest pytest-cov numpy scipy scikit-image
+    - pip install pytest pytest-cov numpy scipy scikit-image pdoc3
     - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --cov-report=xml --junitxml=report.xml
+    - pdoc3 src/QbiPy --html --force
   artifacts:
     when: always
     paths:
     - htmlcov/
+    - html
     reports:
       junit: report.xml
       cobertura: coverage.xml
@@ -23,7 +25,9 @@ pytest:
 pages:
   stage: pages
   script:
-  - mv htmlcov/ public
+  - mkdir public/other
+  - mv htmlcov/ public/other
+  - mv html/QbiPy public
   artifacts:
     paths:
     - public

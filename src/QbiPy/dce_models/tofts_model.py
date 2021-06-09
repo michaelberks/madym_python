@@ -11,7 +11,7 @@ def concentration_from_model(aif:dce_aif.Aif,
     Compute concentration time-series of extended-Tofts model from input
     paramaters
     
-     Inputs:
+     Parameters:
        aif (Aif object, num_times): object to store and resample arterial input function values (1 for each time point)
     
        Ktrans (1D numpy array, num_voxels): Ktrans values, 1 for each voxel
@@ -23,7 +23,7 @@ def concentration_from_model(aif:dce_aif.Aif,
        tau_a (1D numpy array, num_voxels): v_e values, 1 for each voxel
     
     
-     Outputs:
+     Returns:
        C_model (2D numpy array, num_times x num_voxels) - Model concentrations at each time point for each 
        voxel computed from model paramaters
     '''
