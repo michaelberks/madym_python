@@ -25,8 +25,8 @@ pages:
   stage: pages
   script:
   - mkdir public
-  - mkdir public/other
-  - mv htmlcov/* public/other/
+  - mkdir public/test_coverage
+  - mv htmlcov/* public/test_coverage/
   - mv html/QbiPy/* public/
   artifacts:
     paths:
