@@ -10,7 +10,7 @@ plugins:
   }]
   - "@semantic-release/release-notes-generator"
   - - "@semantic-release/exec"
-    - verifyReleaseCmd: "echo #This file is auto-generated in GitLab CI and should not be edited manually\n ${nextRelease.version} > VERSION.txt"
+    - verifyReleaseCmd: "version.sh ${nextRelease.version}"
   - - "@semantic-release/changelog"
     - changelogFile: CHANGELOG.md
   - "@semantic-release/gitlab"
