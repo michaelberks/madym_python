@@ -47,4 +47,5 @@ fetch-semantic-version:
     - npm install @semantic-release/gitlab @semantic-release/exec @semantic-release/changelog
     - npx semantic-release
   artifacts:
+    paths:
     - VERSION.txt
