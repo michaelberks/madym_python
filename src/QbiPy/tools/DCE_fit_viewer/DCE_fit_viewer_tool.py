@@ -1,3 +1,7 @@
+'''
+GUI tool for inspecting tracer-kinetic model fits of individual DCE-MRI voxel time-series
+'''
+
 import sys
 import os
 import glob

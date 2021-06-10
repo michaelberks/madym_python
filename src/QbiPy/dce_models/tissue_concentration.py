@@ -1,3 +1,7 @@
+'''
+Functions to convert between signal and contrast-agent concentration
+'''
+
 import numpy as np
 
 #

@@ -1,8 +1,12 @@
-# Created: 29-Mar-2017
-# Author: Michael Berks 
-# Email : michael.berks@manchester.ac.uk 
-# Phone : +44 (0)161 275 7669 
-# Copyright: (C) University of Manchester
+'''
+Utility functions for reading and writing DCE-MRI dynamic series images and meta data
+
+ Created: 29-Mar-2017
+ Author: Michael Berks 
+ Email : michael.berks@manchester.ac.uk 
+ Phone : +44 (0)161 275 7669 
+ Copyright: (C) University of Manchester
+'''
 
 import numpy as np
 

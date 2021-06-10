@@ -1,3 +1,7 @@
+'''
+Functions for T1 mapping using a variable flip-angle (VFA) approach
+'''
+
 import numpy as np
 def signal_from_T1(T1, M0, FA, TR):
     '''

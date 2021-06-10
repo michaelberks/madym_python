@@ -1,7 +1,10 @@
-#Functions for reading and writing analyze format images
-#For now I've used an external libray MedPy to do most the work
-#I haven't looked into this package in much detail, as mainly interested
-#in the load function for now...
+'''
+Functions for reading and writing Analyze 7.5 format images
+
+These are often available in external packages, but it was helpful
+to have our own implementation that used native code with few
+external dependencies
+'''
 import numpy as np
 import struct
 import os

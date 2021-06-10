@@ -1,3 +1,7 @@
+
+'''
+Qt widget subclass to enable subplotting pyplot axes
+'''
 # Imports
 from PyQt5 import QtWidgets
 from matplotlib.figure import Figure
