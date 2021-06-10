@@ -1,10 +1,13 @@
-'Tools for DCE-MRI analysis from the QBI lab, University of Manchester'
+'''
+Tools for DCE-MRI analysis from the QBI lab, University of Manchester
 
-import os
-v_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', 'VERSION'))
-with open(v_file, 'r') as f:
-    v = f.readlines()
+Notes:
+The version is read directly from the latest git repo tag, which is itself
+set auto-magically by semantic-release in the project's GitLab CI/CD pipeline
+'''
 
-__version__= v[1].strip()
+import git
+repo = git.Repo('.')
+
+__version__= str(repo.tags[-1]).split('v')[1]
 __all__ = ['dce_models', 'image_io', 't1_mapping', 'tools', 'helpers']

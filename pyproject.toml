@@ -1,6 +1,7 @@
 [build-system]
 requires = [
     "setuptools>=47",
-    "wheel"
+    "wheel",
+    "gitpython"
 ]
 build-backend = "setuptools.build_meta"
