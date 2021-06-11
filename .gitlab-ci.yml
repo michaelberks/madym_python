@@ -49,6 +49,7 @@ fetch-semantic-version:
     - npx semantic-release
 
 pypi_release:
+  image: registry.gitlab.com/manchester_qbi/manchester_qbi_public/qbipy/qbipy_depends
   stage: deploy
   cache: {}
   script:
