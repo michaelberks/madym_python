@@ -58,6 +58,6 @@ pypi_release:
     - python setup.py sdist bdist_wheel
     - twine check dist/*
     # upload to oficial
-    - twine upload dist/*
+    - twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
   only:
     - /^release-.*$/
