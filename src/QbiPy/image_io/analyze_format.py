@@ -751,6 +751,7 @@ def write_analyze(img_data: np.array, filename: str,
 
     #images also get loaded in with the y-axis (after swapping!) reversed
     #(eg upside down). Use the flip_y flag to correct this
+    img_data = np.atleast_3d(img_data)
     if flip_y:
         img_data = np.flip(img_data, 0)
 

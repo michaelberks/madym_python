@@ -43,6 +43,7 @@ def signal_to_concentration(S_t: np.array, T1_0: np.array, M0: np.array,
 
     num_voxels = S_t.shape[0]
 
+    T1_0 = np.array(T1_0)
     if T1_0.size != num_voxels:
         #Flag error - throw exception?, return empty signals
         raise ValueError(
@@ -65,6 +66,7 @@ def signal_to_concentration(S_t: np.array, T1_0: np.array, M0: np.array,
         M0 = S_0 * b_0 / a_0
     else:
         #Check M0 is correct size
+        M0 = np.array(M0)
         if M0.size != num_voxels:
             #Flag error - throw exception?, return empty signals
             raise ValueError (f'Size of M0 ({M0.size}) does not match number of columns in S_t ({num_voxels})')
@@ -120,11 +122,13 @@ def concentration_to_signal(C_t: np.array, T1_0: np.array, M0: np.array,
 
     num_voxels = C_t.shape[0]
 
+    T1_0 = np.array(T1_0)
     if T1_0.size != num_voxels:
         #Flag error - throw exception?, return empty signals
         raise ValueError (
             f'Size of T1_0 ({T1_0.size}) does not match number of rows in C_t ({num_voxels})')
 
+    M0 = np.array(M0)
     if M0.size != num_voxels:
         #Flag error - throw exception?, return empty signals
         raise ValueError (
