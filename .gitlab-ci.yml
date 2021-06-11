@@ -54,7 +54,7 @@ pypi_release:
   cache: {}
   script:
     - pip install -U twine
-    - version.sh
+    - ./version.sh
     - python setup.py sdist bdist_wheel
     - twine check dist/*
     # upload to oficial
