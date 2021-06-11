@@ -48,19 +48,19 @@ fetch-semantic-version:
     - npm install @semantic-release/gitlab @semantic-release/exec @semantic-release/changelog
     - npx semantic-release
 
-  pypi_release:
-    stage: deploy
-    cache: {}
-    script:
-      - pip install -U twine
-      - version.sh
-      - python setup.py sdist bdist_wheel
-      - twine check dist/*
-      # upload to oficial
-      - twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
-      - pip install helpdev==$CI_COMMIT_TAG
-      - helpdev --version
-      - pip uninstall helpdev -y
+pypi_release:
+  stage: deploy
+  cache: {}
+  script:
+    - pip install -U twine
+    - version.sh
+    - python setup.py sdist bdist_wheel
+    - twine check dist/*
+    # upload to oficial
+    - twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
+    - pip install helpdev==$CI_COMMIT_TAG
+    - helpdev --version
+    - pip uninstall helpdev -y
   only:
     - master
     - /^release-.*$/
