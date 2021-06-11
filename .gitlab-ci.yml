@@ -58,10 +58,6 @@ pypi_release:
     - python setup.py sdist bdist_wheel
     - twine check dist/*
     # upload to oficial
-    - twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
-    - pip install helpdev==$CI_COMMIT_TAG
-    - helpdev --version
-    - pip uninstall helpdev -y
+    - twine upload dist/*
   only:
-    - master
     - /^release-.*$/
