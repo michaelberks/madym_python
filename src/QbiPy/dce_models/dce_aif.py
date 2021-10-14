@@ -6,6 +6,8 @@ Arterial input function class that supports:
 * Passing a vector of AIF values as input
 * Resampling the created AIF with any given delay time
 
+Aif times are assumed to be in minutes
+
 '''
 
 import numpy as np

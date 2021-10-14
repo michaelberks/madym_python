@@ -68,4 +68,52 @@ def check_param_shape(**kwargs):
 
     return (shape, *kwargs.values())
 
+#
+#-------------------------------------------------------------------------------
+def trapz_integral(C_t, t):
+    '''
+    Compute cumulative integral of time-series at given times using trapezium rule
+
+    inputs:
+
+        C_t : np.array (n_times)
+            Time-series to integrate
+        t : np.array (n_times)
+            Associated time-points
+
+    outputs:
+        C_t_integral : np.array (n_times)
+            Cumulative integral at each timepoint
+    '''
+    delta_t = t[1:] - t[0:-1]
+    C_t_mid = 0.5*(C_t[0:-1] + C_t[1:])
+
+    C_t_integral = np.zeros_like(t)
+    C_t_integral[1:] = np.cumsum(delta_t*C_t_mid)
+    return C_t_integral
+
+#
+#-------------------------------------------------------------------------------
+def exp_conv(T:float, delta_t:float, Ca1:float, Ca0:float, f0:float):
+    '''
+    Computes update to convolution of function T.exp(-t_i*T) with Ca(t_i) between t_i and t_i-1
     
+    inputs:
+        T exponent:float parameter
+        delta_t:float time difference t_i - t_i-1
+        Ca1:float value of Ca at t_i
+        Ca0:float value of Ca at t_i-1
+        f0:float previous value of convolved function to be updated
+    outputs:
+        f1:Update convolved function
+  */
+    '''
+    xi = delta_t * T
+    delta_a = (Ca1 - Ca0) / xi
+    E = np.exp(-xi)
+    E0 = 1 - E
+    E1 = xi - E0
+
+    integral = Ca0*E0 + delta_a*E1
+    f1 = E*f0 + integral
+    return f1

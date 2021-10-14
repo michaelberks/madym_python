@@ -1,3 +1,10 @@
+'''
+Module to compute signal from T1 for VFA, SPGR
+
+Note we don't do any fitting here, as this module is used primarily to
+provide test data in the Madym wrappers
+'''
+
 import numpy as np
 def signal_from_T1(T1, M0, FA, TR):
     '''
