@@ -15,8 +15,15 @@ and associated dynamic times (t), it is trivial to create an AIF object:
 
 aif = dce_aif.Aif(times = t, base_aif=Ca_t, aif_type=ARRAY)
 
-The remaining model parameters can either be input as scalars, or 1D numpy arrays. The two forms
-can be mixed, but any paramaters set as arrays must be the same length.
+The remaining model parameters can either be input as scalars, or 1D np.arrays. The two forms
+can be mixed, but any paramaters set as arrays must be the same length. The output is always
+a 2D array C(t) = (n_samples x n_times).
+
+The main concentration_from_model function is written this way because it is primarily used
+for setting up ground truth inputs from Monte-Carlo simulations. However, for convenience
+if using as a forward model during model fits, a wrapper function is provided in which
+a single set of model parameters are input as a list/tuple/array and C(t) is returned
+as a 1D-array
 
 '''
 
@@ -28,33 +35,46 @@ from QbiPy import helpers
 #
 #---------------------------------------------------------------------------------
 def concentration_from_model(aif:dce_aif.Aif, 
-    Ktrans: np.array, v_e: np.array, v_p: np.array, tau_a: np.array, use_exp_conv:bool=False)->np.array:
+    Ktrans: np.array, v_e: np.array, v_p: np.array, tau_a: np.array, 
+    use_exp_conv:bool=False, all_scalar=False)->np.array:
     '''
     Compute concentration time-series of extended-Tofts model from input
     paramaters
     
      Inputs:
-       aif (Aif object, num_times): object to store and resample arterial input function values (1 for each time point)
+        aif (Aif object, num_times): 
+            object to store and resample arterial input function values
     
-       Ktrans (1D numpy array, num_voxels): Ktrans values, 1 for each voxel
+        Ktrans (1D np.array, num_voxels): 
+            Ktrans values, 1 for each voxel or scalar
     
-       v_p (1D numpy array, num_voxels): vascular volume fraction values, 1 for each voxel
+        v_p (1D np.array, num_voxels): 
+            vascular volume fraction values, 1 for each voxel or scalar
     
-       v_e (1D numpy array, num_voxels): extra-cellular, extra-vascular volume fraction values, 1 for each voxel
+        v_e (1D np.array, num_voxels): 
+            extra-cellular, extra-vascular volume fraction values, 1 for each voxel or scalar
     
-       tau_a (1D numpy array, num_voxels): arterial delay values, 1 for each voxel
+        tau_a (1D np.array, num_voxels): 
+            arterial delay values, 1 for each voxel or scalar
     
-       use_exp_conv, bool: if true, uses non-interpolating exponential convolution, otherwise does standard stepwise
+        use_exp_conv, bool: 
+            if true, uses non-interpolating exponential convolution, otherwise does standard stepwise
+
+        all_scalar, bool: 
+            if true, skips checks on parameter dimensions, and runs for a single voxel
     
      Outputs:
-       C_model (2D numpy array, num_voxels x num_times) - Model concentrations at each time point for each 
-       voxel computed from model paramaters
+        C_model (2D np.array, num_voxels x num_times):
+            Model concentrations at each time point for each voxel computed from model paramaters
     '''
 
-    #We allow the mdoel paramaters to be scalar, whilst also accepting higher dimension arrays
-    num_voxels,Ktrans, v_e, v_p, tau_a = helpers.check_param_size(
-        Ktrans=Ktrans,v_e=v_e,v_p=v_p, tau_a=tau_a
-    )
+    if all_scalar:
+        num_voxels = 1
+    else:
+        #We allow the model paramaters to be scalar, whilst also accepting higher dimension arrays
+        num_voxels,Ktrans, v_e, v_p, tau_a = helpers.check_param_size(
+            Ktrans=Ktrans,v_e=v_e,v_p=v_p, tau_a=tau_a
+        )
 
     #precompute exponential
     k_ep = Ktrans / v_e
@@ -98,6 +118,28 @@ def concentration_from_model(aif:dce_aif.Aif,
         C_model[:,i_t] = v_p * Ca_t1 + Ktrans * e_i
 
     return C_model
+
+#
+#---------------------------------------------------------------------------------
+def concentration_from_model_single(params: np.array, aif:dce_aif.Aif)->np.array:
+    '''
+    Compute concentration time-series of extended-Tofts model from input
+    paramaters
+    
+     Inputs:
+        params (tuple/list/1D np.array): 
+            4 element array containing [Ktrans, v_e, v_p, tau_a] for a single sample
+        
+        aif (Aif object, num_times): 
+            object to store and resample arterial input function values
+    
+     Outputs:
+       C_model (1D np.array num_times) - Model concentrations at each time point for each 
+       voxel computed from model paramaters
+    '''
+    return concentration_from_model(aif, 
+        params[0], params[1], params[2], params[3], 
+        use_exp_conv=False, all_scalar=True)[0,]
 
 #
 #---------------------------------------------------------------------------
