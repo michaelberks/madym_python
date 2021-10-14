@@ -38,7 +38,6 @@ Concentration model equation
 
 import warnings
 import numpy as np
-from scipy.interpolate import interp1d
 from QbiPy.dce_models import dce_aif, dibem
 from QbiPy import helpers
 

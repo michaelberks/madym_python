@@ -28,7 +28,6 @@ as a 1D-array
 '''
 
 import numpy as np
-from scipy.interpolate import interp1d
 from QbiPy.dce_models import dce_aif 
 from QbiPy import helpers
 

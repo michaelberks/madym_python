@@ -40,7 +40,6 @@ Code for converting 2CXM parameters to DIBEM form is defined below.
 '''
 
 import numpy as np
-from scipy.interpolate import interp1d
 from QbiPy.dce_models import dce_aif, dibem
 from QbiPy import helpers
 
