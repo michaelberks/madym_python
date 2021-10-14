@@ -1,3 +1,7 @@
+'''
+GUI tool for inspecting 3D image volumes stored in Analyze 7.5 format
+'''
+
 import sys
 import os
 import glob

@@ -2,6 +2,7 @@ stages:
   - test
   - pages
   - fetch-version
+  - deploy
 
 before_script:
   - git fetch --tags
@@ -46,6 +47,17 @@ fetch-semantic-version:
   script:
     - npm install @semantic-release/gitlab @semantic-release/exec @semantic-release/changelog
     - npx semantic-release
-  artifacts:
-    paths:
-    - VERSION.txt
+
+pypi_release:
+  image: registry.gitlab.com/manchester_qbi/manchester_qbi_public/qbipy/qbipy_depends
+  stage: deploy
+  cache: {}
+  script:
+    - pip install -U twine
+    - ./version.sh
+    - python setup.py sdist bdist_wheel
+    - twine check dist/*
+    # upload to oficial
+    - twine upload dist/*
+  only:
+    - /^release-.*$/

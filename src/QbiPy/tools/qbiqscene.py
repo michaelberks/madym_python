@@ -1,3 +1,7 @@
+'''
+Subclass of Qt's QGraphicsScene to enable custom annotations eg tumour borders
+'''
+
 from PyQt5.QtGui import QPixmap, QImage, qRgb, QPainterPath, QPen, QBrush, QPainter
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsPathItem
 from PyQt5.QtCore import QRectF, Qt, QPointF

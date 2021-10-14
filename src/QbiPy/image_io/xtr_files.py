@@ -1,10 +1,11 @@
-''' Functions for reading and writing the xtr files used by madym to encode information
-    not encoding in Analyze format image headers
-# Created: 08-Jan-2019
-# Author: Michael Berks 
-# Email : michael.berks@manchester.ac.uk 
-# Phone : +44 (0)161 275 7669 
-# Copyright: (C) University of Manchester'''
+''' Functions for reading and writing the xtr files used by madym to encode information not stored in Analyze format image headers (eg flip angle and TR)
+
+Created: 08-Jan-2019
+Author: Michael Berks 
+Email : michael.berks@manchester.ac.uk 
+Phone : +44 (0)161 275 7669 
+Copyright: (C) University of Manchester
+'''
 
 import math
 import re

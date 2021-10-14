@@ -1,5 +1,5 @@
 '''
-Native python code for working with the two-compartment exchange model (2CXM). 
+Module for working with the two-compartment exchange model (2CXM). 
 This has a bi-exponential IRF, and uses the dibem module to compute a forward model.
 
 The model includes the standard 4 parameters Fp, PS, ve, vp. It also includes a delay
@@ -52,7 +52,6 @@ Code for converting 2CXM parameters to DIBEM form is defined below.
 '''
 
 import numpy as np
-from scipy.interpolate import interp1d
 from QbiPy.dce_models import dce_aif, dibem
 from QbiPy import helpers
 

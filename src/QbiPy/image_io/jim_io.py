@@ -1,3 +1,17 @@
+'''
+Functions for reading and writing Jim ROI files
+
+Jim is a cross-platform MRI analysis tool the QBI lab has long used
+to annotate MRI images and generate ROI masks.
+
+See http://www.xinapse.com/j-im-8-software/ for details.
+
+This module provides functions for:
+
+* Interpreting the contents of ROI files created in Jim, reading the information into python data structures
+* Creating mask files (as numpy binary arrays) from ROI files
+* Writing Jim ROI files given an input binary mask or list of ROI contour co-ordinates
+'''
 import numpy as np
 import datetime
 import os

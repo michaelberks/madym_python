@@ -1,5 +1,5 @@
 '''
-Native python code for woring with the extended-Tofts model.
+Module for woring with the extended-Tofts model.
 
 We provide the forward model (concentration_from_model), to be used elsewhere in
 fitting if required. In addition we provide methods for fitting the model using
