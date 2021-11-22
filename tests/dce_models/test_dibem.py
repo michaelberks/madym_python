@@ -11,7 +11,7 @@ sys.path.insert(0,
 
 #-------------------------------------------------------------------------------
 # Tests for dibem module
-from QbiPy.dce_models import dibem
+from QbiPy.dce_models import dibem, two_cxm_model, active_uptake_model
 from QbiPy.dce_models import dce_aif
 #-------------------------------------------------------------------------------
 
@@ -22,11 +22,11 @@ def test_params_AUEM():
     k_i = 0.25 
     k_ef = 0.05
 
-    dibem_params = dibem.params_AUEM_to_DIBEM(F_p, v_ecs, k_i, k_ef, False)
-    F_p2, v_ecs2, k_i2, k_ef2 = dibem.params_DIBEM_to_AUEM(*dibem_params, False)
+    dibem_params = active_uptake_model.params_to_DIBEM(F_p, v_ecs, k_i, k_ef, False)
+    F_p2, v_ecs2, k_i2, k_ef2 = active_uptake_model.params_from_DIBEM(*dibem_params, False)
 
-    dibem_params = dibem.params_AUEM_to_DIBEM(F_p, v_ecs, k_i, k_ef, True)
-    F_p3, v_ecs3, k_i3, k_ef3 = dibem.params_DIBEM_to_AUEM(*dibem_params, True)
+    dibem_params = active_uptake_model.params_to_DIBEM(F_p, v_ecs, k_i, k_ef, True)
+    F_p3, v_ecs3, k_i3, k_ef3 = active_uptake_model.params_from_DIBEM(*dibem_params, True)
 
     assert F_p == pytest.approx(F_p2)
     assert v_ecs == pytest.approx(v_ecs2)
@@ -43,13 +43,13 @@ def test_params_2CXM():
     v_e = 0.2 
     v_p = 0.1
 
-    dibem_params = dibem.params_2CXM_to_DIBEM(F_p, PS, v_e, v_p, False)
+    dibem_params = two_cxm_model.params_to_DIBEM(F_p, PS, v_e, v_p, False)
     print('params_2CXM_to_DIBEM: ', dibem_params)
-    F_p2, PS2, v_e2, v_p2 = dibem.params_DIBEM_to_2CXM(*dibem_params, False)
+    F_p2, PS2, v_e2, v_p2 = two_cxm_model.params_from_DIBEM(*dibem_params, False)
 
-    dibem_params = dibem.params_2CXM_to_DIBEM(F_p, PS, v_e, v_p, True)
+    dibem_params = two_cxm_model.params_to_DIBEM(F_p, PS, v_e, v_p, True)
     print('params_2CXM_to_DIBEM: ', dibem_params)
-    F_p3, PS3, v_e3, v_p3 = dibem.params_DIBEM_to_2CXM(*dibem_params, True)
+    F_p3, PS3, v_e3, v_p3 = two_cxm_model.params_from_DIBEM(*dibem_params, True)
 
     assert F_p == pytest.approx(F_p2)
     assert PS == pytest.approx(PS2)

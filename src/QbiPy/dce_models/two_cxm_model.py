@@ -134,8 +134,7 @@ def params_to_DIBEM(F_p, PS, v_e, v_p, Fp_form=False):
         K_neg[method2] = K_sum + K_root
 
         E_pos[method2] = (K_neg[method2] - Kb) / (K_neg[method2] - K_pos[method2])
-         
-    ##
+
     if Fp_form:
         F_pos = F_p
         F_neg = E_pos
@@ -147,7 +146,7 @@ def params_to_DIBEM(F_p, PS, v_e, v_p, Fp_form=False):
 
 #
 #-------------------------------------------------------------------------------
-def params_from_DIBEM(F_pos, F_neg, K_pos, K_neg):
+def params_from_DIBEM(F_pos, F_neg, K_pos, K_neg, Fp_form=False):
     '''
     Starting with the derived parameters fitted in
     the 2CXM model, convert to the physiological parameters F_p, PS, ve and vep
@@ -173,8 +172,13 @@ def params_from_DIBEM(F_pos, F_neg, K_pos, K_neg):
     )
 
     #We derive the params based on 2009 Sourbron paper
-    F_p = F_pos
-    E_neg = (1 - F_neg)
+    if Fp_form:
+      F_p = F_pos
+      E_neg = (1 - F_neg)
+
+    else:
+      F_p = F_pos + F_neg
+      E_neg = F_neg / F_p
 
     T_B = 1 / (K_pos - E_neg * (K_pos - K_neg))
     T_E = 1 / (T_B * K_pos * K_neg)
