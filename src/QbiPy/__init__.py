@@ -40,5 +40,7 @@ if os.path.exists(version_path):
 else:
     __version__ = version_from_git()
 
+__all__ = ['dce_models', 'image_io', 't1_mapping', 'tools', 'helpers', 'examples']
 
-__all__ = ['dce_models', 'image_io', 't1_mapping', 'tools', 'helpers']
+__pdoc__ = {}
+__pdoc__['examples'] = False
