@@ -9,8 +9,9 @@ This object can be used to either:
 - load an AIF from a text file (see module for required format) that will be linearly resampled
 '''
 #%%
-%load_ext autoreload
-%autoreload 2
+#Uncomment the two lines below to use iPython magic commands for auto-relaoding modules
+#%load_ext autoreload
+#%autoreload 2
 
 import matplotlib.pyplot as plt
 import numpy as np
