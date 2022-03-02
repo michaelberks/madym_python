@@ -11,31 +11,32 @@ from PyQt5.QtGui import QImage, qRgb
 import numpy as np
 from scipy import ndimage
 
-from QbiPy.image_io.analyze_format import read_analyze_img
+from QbiPy.image_io.analyze_format import read_analyze
 from QbiPy.tools import qbiqscene as qs
 
 from QbiPy.tools.AIF_viewer.AIF_viewer import Ui_AIFViewer    
 from QbiPy.dce_models.dce_aif import Aif, AifType  
 
-image_format = "*.hdr"
 AIF_format = "*_AIF.txt"
 
 class AIFViewerTool(QMainWindow):
 
     # --------------------------------------------------------------------
     # --------------------------------------------------------------------
-    def __init__(self, AIF_dir=None, dynamic_image=None, parent=None):
+    def __init__(self, AIF_dir=None, dynamic_image=None, image_format = ".nii.gz", parent=None):
 
         #Create the UI
         QWidget.__init__(self, parent)
         self.ui = Ui_AIFViewer()
         self.ui.setupUi(self)
+        self.showMaximized()
         self.ui.scene1 = qs.QbiQscene()
         self.ui.leftGraphicsView.setScene(self.ui.scene1)
         self.ui.colorbar = qs.QbiQscene()
         self.ui.colorbarGraphicsView.setScene(self.ui.colorbar)
 
         #Initialize instance variables
+        self.image_format = image_format
         self.AIF_names = []
         self.num_AIFs = 0
         self.curr_AIF = 0
@@ -108,7 +109,7 @@ class AIFViewerTool(QMainWindow):
             self.update_curr_AIF()
             
         else:
-            QMessageBox.warning(self, 'No subjects found!', 'No subjects found in ' + self.AIF_dir)
+            QMessageBox.warning(self, 'No AIFs found!', 'No AIFs found in ' + self.AIF_dir)
                 
     #--------------------------------------------------------------------------
     def load_dynamic_image(self):
@@ -117,7 +118,7 @@ class AIFViewerTool(QMainWindow):
                 self.dynamic_image_path + ' does not exist, check disk is connected')
             return
 
-        self.dynamic_image = read_analyze_img(self.dynamic_image_path)
+        self.dynamic_image = read_analyze(self.dynamic_image_path)[0]
 
         #Get size of this image
         self.num_slices = self.dynamic_image.shape[2]
@@ -149,9 +150,9 @@ class AIFViewerTool(QMainWindow):
             aif = Aif(aif_type=AifType.FILE, filename=aif_path)
             self.AIFs.append(aif)
 
-            aif_mask_name = os.path.splitext(aif_path)[0] + ".hdr"
+            aif_mask_name = os.path.splitext(aif_path)[0] + self.image_format
             if os.path.isfile(aif_mask_name):
-                aif_mask = read_analyze_img(aif_mask_name)
+                aif_mask = read_analyze(aif_mask_name)[0]
                 self.AIF_masks.append(aif_mask==1)
             else:
                 self.AIF_masks.append(None)
@@ -253,7 +254,7 @@ class AIFViewerTool(QMainWindow):
     def select_dynamic_image(self):
         self.ui.dynVolLineEdit.setEnabled(False)
         temp_path = QFileDialog.getOpenFileName(self, 'Open file', 
-            self.dynamic_dir, "Image files (*.hdr)")
+            self.dynamic_dir, f"Image files (*{self.image_format})")
         
         if temp_path:
             self.dynamic_dir = os.path.dirname(temp_path)
@@ -438,12 +439,15 @@ if __name__ == "__main__":
     aif_dir = None
     init_image = 0
     dynamic_image = None
+    image_format = ".nii.gz"
     if len(sys.argv) > 1:
         aif_dir = sys.argv[1]
     if len(sys.argv) > 2:
         dynamic_image = sys.argv[2]
+    if len(sys.argv) > 3:
+        image_format = sys.argv[3]
 
-    myapp = AIFViewerTool(aif_dir, dynamic_image)
+    myapp = AIFViewerTool(aif_dir, dynamic_image, image_format=image_format)
     myapp.show()
     myapp.get_AIF_list(init_image)
     myapp.load_dynamic_image()

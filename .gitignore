@@ -146,5 +146,6 @@ dmypy.json
 AuditLog.log
 AuditLog.txt
 
-#Local hack around script
+#Local hack around scripts
 *dummy.py
+*sandpit.py

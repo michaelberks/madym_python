@@ -4,23 +4,30 @@ Utility functions for reading and writing DCE-MRI dynamic series images and meta
 
 import numpy as np
 
-from QbiPy.image_io.analyze_format import read_analyze, read_analyze_img
+from QbiPy.image_io.analyze_format import read_analyze
 from QbiPy.image_io.xtr_files import read_xtr_file
 #-----------------------------------------------------------------------------------
-def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d'):
+def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d', ext = '.hdr'):
     '''GET_DYN_VALS given directory of volumes and ROI mask, get array of
     time-series for voxels in the ROI
     [times] = get_dyn_vals(root_path, num_vols, roi, index_fmt)
 
     Parameters:
-        root_path - folder + filename root where volumes are, or 4D array of loaded volumes
+        root_path : str
+            folder + filename root where volumes are, or 4D array of loaded volumes
 
-        num_vols - number of volumes to load
+        num_vols : int
+            number of volumes to load
 
-        roi - mask volume, must have same dims as dynamic volumes
+        roi : str or np.array
+            mask volume. if string, path to ROIvolume. If np.array, 
+            must have same dims as dynamic volumes
 
-        index_fmt ('01d') - format that converts indexes into volume suffix
+        index_fmt : str = '01d'
+            format that converts indexes into volume suffix
 
+        ext : str = '.hdr
+            extension of image volumes
 
     Returns:
         dyn_signals - N_vox x N_times array of time-series for each voxel
@@ -28,7 +35,7 @@ def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d'):
 
     #If ROI is a path, load it from disk
     if type(roi) == str:
-        roi = read_analyze_img(roi) > 0
+        roi = read_analyze(roi)[0] > 0
 
 
     num_pts = np.count_nonzero(roi)
@@ -37,8 +44,8 @@ def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d'):
     load_vols = type(root_path) == str
     for i_vol in range(num_vols):
         if load_vols:
-            vol_path = f"{root_path}{i_vol+1:{index_fmt}}.hdr"
-            vol = read_analyze_img(vol_path)
+            vol_path = f"{root_path}{i_vol+1:{index_fmt}}{ext}"
+            vol = read_analyze(vol_path)[0]
         else:
             vol = root_path[:,:,:,i_vol]
         
@@ -47,19 +54,23 @@ def get_dyn_vals(root_path, num_vols, roi, index_fmt = '01d'):
     return dyn_signals
 
 #-----------------------------------------------------------------------------------
-def get_dyn_vols(root_path, num_vols, index_fmt = '01d'):
+def get_dyn_vols(root_path, num_vols, index_fmt = '01d', ext = '.hdr'):
     '''
     Load series of image volumes
     [times] = get_dyn_times(root_path, index_fmt, num_vols)
 
     Parameters:
-        root_path - path to each volume to be loaded, so that the full path
-        to the i-th volume is [root_path sprintf(index_fmt, i) '.hdr']
+        root_path : str
+            folder + filename root where volumes are, or 4D array of loaded volumes
 
-        num_vols - number of volumes to load
+        num_vols : int
+            number of volumes to load
 
-        index_fmt - defines format for indexing of volumes. In most QBi data
-        this is just 01d (equivalent to num2str, with no modifiers)
+        index_fmt : str = '01d'
+            format that converts indexes into volume suffix
+
+        ext : str = '.hdr
+            extension of image volumes
 
     Returns:
         dyn_vols - (Ny, Nx, Nz, Nvols) array containing each dynamic volume
@@ -69,7 +80,7 @@ def get_dyn_vols(root_path, num_vols, index_fmt = '01d'):
     dyn_vols = []
     for i_vol in range(num_vols):
         
-        vol_path = f"{root_path}{i_vol+1:{index_fmt}}.hdr"
+        vol_path = f"{root_path}{i_vol+1:{index_fmt}}{ext}"
         d, d_hdr = read_analyze(vol_path)
         
         

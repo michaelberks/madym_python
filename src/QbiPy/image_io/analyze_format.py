@@ -11,6 +11,7 @@ import os
 from types import SimpleNamespace
 import warnings
 from datetime import datetime
+import nibabel as nib
 
 from QbiPy.image_io import xtr_files
 
@@ -117,7 +118,8 @@ def lookup_format(type_in, type_out, val):
 def read_analyze(filename: str=None,
     output_type:np.dtype=np.float64, scale:float = 1.0, 
     flip_y: bool = True, flip_x: bool = False,
-    swap_axes: bool = True):
+    swap_axes: bool = True,
+    use_native = True):
     '''
     Read image file and header data of Mayo Analyze 7.5 data set.
 
@@ -138,6 +140,11 @@ def read_analyze(filename: str=None,
             If true, flips the output image about array axis 0 (vertical flip)
         flip_x : bool default False,
             If true, flips the output image about array axis 1 (horizontal flip)
+        swap_axes: bool default True,
+            If true, swaps the X and Y axes
+        use_native: bool default True,
+            If true, use the native Analyze readers, if false, uses nibabel. If image
+            extension is nii or nii.gz nibabel will be used regardless.
 
     Returns:
         img : np.array
@@ -146,18 +153,42 @@ def read_analyze(filename: str=None,
         hdr_data : SimpleNamespace
             analyze format header data structure.
     '''
-    hdr = read_analyze_hdr(filename)
-    img = read_analyze_img(hdr_data=hdr,
-        output_type=output_type, scale=scale, 
-        flip_y=flip_y, flip_x=flip_x, swap_axes=swap_axes)
+    ext = os.path.splitext(filename)[1]
+    if ext.lower() == ".nii" or ext.lower() == ".gz":
+        use_native = False
+
+    if use_native:
+        hdr = read_analyze_hdr(filename)
+        img = read_analyze_img(hdr_data=hdr,
+            output_type=output_type)
+    else:     
+        img, hdr = analyze_from_nibabel(filename)
+    
+    #images also get loaded in with the y-axis (after swapping!) reversed
+    #(eg upside down). Use the flip_y flag to correct this
+    if swap_axes:
+        img = np.swapaxes(img, 0, 1)
+    if flip_y:
+        img = np.flip(img, 0)
+    if flip_x:
+        img = np.flip(img, 1)
+
+    #Finally, the QBI lab often used to save scaled output, we may want
+    #to scale that during loading. Note the out data type should be a
+    #float of some sort for this.
+    if scale != 1.0:
+        try:
+            img /= scale  
+        except:
+            raise ValueError(f'Ouput datatype {img.dtype} cannot be scaled.',
+            'Use float format.')
+
     return img, hdr
 
 ##------------------------------------------------------------------------------
 ##------------------------------------------------------------------------------
 def read_analyze_img(filename: str=None, hdr_data=None,
-    output_type:np.dtype=np.float64, scale:float = 1.0, 
-    flip_y: bool = True, flip_x: bool = False,
-    swap_axes: bool = True)->np.array:
+    output_type:np.dtype=np.float64)->np.array:
     '''
     Read image file of Mayo Analyze 7.5 data set. 
     
@@ -182,13 +213,6 @@ def read_analyze_img(filename: str=None, hdr_data=None,
         output_type : np.dtype, default np.float64,
             Numpy datatype output image array converted to. Use None to leave unchanged
             from type specified in header data
-        scale : float default 1.0,
-            Value by which output array is scaled by, if != 1.0, ouput will be divided
-            (NOT multplied) by scale
-        flip_y : bool default True,
-            If true, flips the output image about array axis 0 (vertical flip)
-        flip_x : bool default False,
-            If true, flips the output image about array axis 1 (horizontal flip)
 
     Returns:
         img : np.array
@@ -305,29 +329,9 @@ def read_analyze_img(filename: str=None, hdr_data=None,
     if hdr_data.ImgDataType == 'DT_BINARY':
         img = img.astype(bool, copy=False)
 
-    #images also get loaded in with the y-axis (after swapping!) reversed
-    #(eg upside down). Use the flip_y flag to correct this
-    if swap_axes:
-        img = np.swapaxes(img, 0, 1)
-    if flip_y:
-        img = np.flip(img, 0)
-    if flip_x:
-        img = np.flip(img, 1)
-    
-
     #Now cast to out datatype (leave unchanged if output_type is None)
     if output_type is not None:
         img = img.astype(output_type, copy=False)
-
-    #Finally, the QBI lab often used to save scaled output, we may want
-    #to scale that during loading. Note the out data type should be a
-    #float of some sort for this.
-    if scale != 1.0:
-        try:
-            img /= scale  
-        except:
-            raise ValueError(f'Ouput datatype {img.dtype} cannot be scaled.',
-            'Use float format.')
 
     return img
 
@@ -706,6 +710,267 @@ def read_analyze_hdr(filename, byte_order:str = None):
     
     #We're done, return header data
     return hdr_data
+
+##-----------------------------------------------------------------------------
+##-----------------------------------------------------------------------------
+def analyze_from_nibabel(filename):
+    '''
+    Reads in an Analyze/NIFTI image using nibabel, and converts
+    the header to a simple namespace object as used by our native
+    Analyze 7.5 reader.
+
+    Parameters:
+        filename : str default None
+            filename of analyze header to read. Should be extension
+            free, or either of the filename.hdr or filename.img pair.
+
+    Returns:
+        img: np.array
+            Numpy array of image data
+
+        hdr_data : SimpleNamespace,
+            Namespace object with image metadata. The  following is a 
+            partial list of fields in the hdr_data structure:
+    
+        Filename          A string containing the name of the file
+    
+        FileModDate       A string containing the modification date of
+                            the file
+    
+        HdrFileSize       An integer indicating the size of the HDR file in
+                            bytes
+    
+        ImgFileSize       An integer indicating the size of the IMG file in
+                            bytes
+    
+        Format            A string containing the file format. This value is
+                            set to 'Analyze' for valid Analyze data sets
+    
+        FormatVersion     A string or number specifying the file format
+                            version
+    
+        Width             An integer indicating the width of the image
+                            in pixels
+    
+        Height            An integer indicating the height of the image
+                            in pixels
+    
+        BitDepth          An integer indicating the number of bits per
+                            pixel
+    
+        ColorType         A string indicating the type of image either
+                            'truecolor' for a truecolor (RGB) image, or
+                            'grayscale' for a grayscale image,
+    
+        ByteOrder         A string containing the byte-ordering used to
+                            successfully read in the HDR file.
+    
+        HdrDataType       Data type of the HDR file.
+    
+        DatabaseName      Name of the image database.
+    
+        Extents           An integer which is a required field in the header
+                            file. This value should be 16384.
+    
+        SessionError      An integer indicating session error number.
+    
+        Regular           A character indicating whether or not all images
+                            and volumes are of the same size. A value '1'
+                            indicates that the data is regular while '0'
+                            indicates the data is not regular.
+    
+        Dimensions        A vector providing information on the image
+                            dimensions. The vector is of the form
+                                [X Y Z T]
+                            X gives the X dimension of the image, i.e. the
+                            number of pixels in an image row.
+                            Y gives the Y dimension of the image, i.e. the
+                            number of pixels in an image column.
+                            Z gives the volume Z dimension, i.e. the number of
+                            slices in a volume.
+                            T indicates the time points, i.e. the number of
+                            volumes in the dataset.
+                            Dimensions vector only returns non-zero entries.
+    
+        VoxelUnits        Spatial units of measure for a voxel.
+    
+        CalibrationUnits  Name of the calibration unit.
+    
+        ImgDataType       Data type of the IMG file.
+    
+        PixelDimensions   A vector providing information on the pixel
+                            dimensions. PixelDimensions is parallel to the
+                            Dimensions field, providing real world
+                            measurements in mm. The vector is of the form
+                                [Xp Yp Zp Tp]
+                            Xp provides the voxel width in mm.
+                            Yp provides the voxel height in mm.
+                            Zp provides the slice thickness in mm.
+                            Tp provides the time points in ms.
+                            PixelDimensions vector only returns non-zero
+                            entries.
+    
+        VoxelOffset       The byte offset in the image file at which voxels
+                            start. This value may be negative to specify that
+                            the absolute value is applied for every image in
+                            the file.
+    
+        CalibrationMax    Maximum Calibration value.
+    
+        CalibrationMin    Minimum Calibration value.
+    
+        GlobalMax         Global Maximum. The maximum pixel values for the
+                            entire dataset.
+    
+        GlobalMin         Global Minimum. The minimum pixel values for the
+                            entire dataset.
+    
+        Descriptor        Data description.
+    
+        Orientation       Slice orientation for the dataset.
+    
+    Use struct.unpack to format byte data, with format strings
+        c = char 1
+        b = signed char (int8) 1
+        B = unsigned char (uint8) 1
+        h = short (int16) 2
+        i = int (int32) 4
+        l = long (int64) 8
+        f = float (single) 4
+        d = double 8
+
+    Based on analyze75info copyright 2005-2017 The MathWorks, Inc.
+    Rewritten for python by Mike Berks
+    '''
+    #Load nibabel NIFTI object
+    nii_im = nib.load(filename)
+    img = nii_im.get_fdata()
+    hdr = nii_im.header
+
+    #If 4th dimension is 1, collapse to 3D
+    if img.ndim == 4:
+        img = img[:,:,:,0]
+
+    #Create a simple hader structure
+    hdr_data = SimpleNamespace()
+    hdr_data.Filename = filename
+    s = os.stat(filename)
+    hdr_data.FileModDate = datetime.fromtimestamp(s.st_mtime).strftime(
+        '%d-%b-%Y %H:%M:%S')
+        
+    # Image File Size will be obtained below after constructing the
+    # Image filename from the header filename.
+    hdr_data.Format = type(nii_im)
+    hdr_data.FormatVersion = type(nii_im)
+    hdr_data.BitDepth = int(hdr.get('bitpix'))
+    hdr_data.ColorType = 'unknown'
+    hdr_data.ImgFileSize = 0
+
+
+    # Read the HeaderKey information from HDR file.
+    # Read all information in the HeaderKey structure.
+    hdr_data.HdrDataType  = str(hdr.get('data_type'))
+    hdr_data.DatabaseName = str(hdr.get('db_name'))
+    hdr_data.Extents      = int(hdr.get('extents'))
+    hdr_data.SessionError = int(hdr.get('session_error'))
+    hdr_data.Regular      = str(hdr.get('regular'))
+    
+    # Return useful dimension information.
+    hdr_data.Dimensions = nii_im.shape
+    hdr_data.Width = hdr_data.Dimensions[0]
+    hdr_data.Height= hdr_data.Dimensions[1]
+    hdr_data.VoxelUnits  = hdr.get_xyzt_units()[0]
+    hdr_data.CalibrationUnits = ''
+    hdr_data.Sparse = False
+
+    hdr_data.HdrFileSize = hdr.sizeof_hdr
+
+    if hdr.endianness == '<':
+        hdr_data.ByteOrder = 'ieee-le'
+    else:
+        hdr_data.ByteOrder = 'ieee-be'
+
+    data_type = int(hdr.get('datatype'))
+    if data_type == 0:
+        hdr_data.ImgDataType = 'DT_UNKNOWN'
+    elif data_type == 1:
+        hdr_data.ImgDataType = 'DT_BINARY'
+        hdr_data.ColorType = 'grayscale'
+    elif data_type == 2:
+        hdr_data.ImgDataType = 'DT_UNSIGNED_CHAR'
+        hdr_data.ColorType = 'grayscale'
+    elif data_type == 4:
+        hdr_data.ImgDataType = 'DT_SIGNED_SHORT'
+        hdr_data.ColorType = 'grayscale'
+    elif data_type == 8:
+        hdr_data.ImgDataType = 'DT_SIGNED_INT'
+        hdr_data.ColorType = 'grayscale'
+    elif data_type == 16:
+        hdr_data.ImgDataType = 'DT_FLOAT'
+        hdr_data.ColorType = 'grayscale'
+    elif data_type == 32:
+        hdr_data.ImgDataType = 'DT_COMPLEX'
+        hdr_data.ColorType = 'grayscale'
+    elif data_type == 64:
+        hdr_data.ImgDataType = 'DT_DOUBLE'
+        hdr_data.ColorType = 'grayscale'
+    elif data_type == 128:
+        hdr_data.ImgDataType = 'DT_RGB'
+        hdr_data.ColorType = 'truecolor'
+    elif data_type == 255:
+        hdr_data.ImgDataType = 'DT_ALL'
+
+    #
+    hdr_data.PixelDimensions = hdr.get('pixdim').tolist()
+    hdr_data.VoxelOffset     = float(hdr.get('vox_offset'))
+
+    #
+    hdr_data.CalibrationMax = float(hdr.get('cal_max'))
+    hdr_data.CalibrationMin = float(hdr.get('cal_max'))
+    hdr_data.Compressed     = None
+    hdr_data.Verified       = None
+    hdr_data.GlobalMax      = float(hdr.get('glmax'))
+    hdr_data.GlobalMin      = float(hdr.get('glmax'))
+    
+    #
+    hdr_data.Descriptor   = str(hdr.get('descrip'))
+    hdr_data.AuxFile      = str(hdr.get('aux_file'))
+    Orientation           = 6
+    if Orientation == 0:
+        hdr_data.Orientation = 'Transverse unflipped'
+    elif Orientation == 1:
+        hdr_data.Orientation = 'Coronal unflipped'
+    elif Orientation == 2:
+        hdr_data.Orientation = 'Sagittal unflipped'
+    elif Orientation == 3:
+        hdr_data.Orientation = 'Transverse flipped'
+    elif Orientation == 4:
+        hdr_data.Orientation = 'Coronal flipped'
+    elif Orientation == 5:
+        hdr_data.Orientation = 'Sagittal flipped'
+    else:
+        hdr_data.Orientation = 'Orientation unavailable'
+
+    # Various scanner generated fields
+    hdr_data.Originator   = None
+    hdr_data.Generated    = None
+    hdr_data.Scannumber   = None
+    hdr_data.PatientID    = None
+    hdr_data.ExposureDate = None
+    hdr_data.ExposureTime = None
+
+    #Advance 3 positions for an unused field.
+    hdr_data.Views          = None
+    hdr_data.VolumesAdded   = None
+    hdr_data.StartField     = None
+    hdr_data.FieldSkip      = None
+    hdr_data.OMax           = None
+    hdr_data.OMin           = None
+    hdr_data.SMax           = None
+    hdr_data.SMin           = None
+    
+    #We're done, return header data and image
+    return img, hdr_data
 
 ##-----------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------

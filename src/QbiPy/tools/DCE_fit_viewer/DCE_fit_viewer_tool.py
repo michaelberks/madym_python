@@ -10,24 +10,26 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtGui import QFont
 import numpy as np
 
-from QbiPy.image_io.analyze_format import read_analyze_img
+from QbiPy.image_io.analyze_format import read_analyze
 from QbiPy.dce_models.data_io import get_dyn_vals
 
-from QbiPy.tools.DCE_fit_viewer.DCE_fit_viewer import Ui_DCEFitViewer  
-
-image_format = "*.hdr"
+from QbiPy.tools.DCE_fit_viewer.DCE_fit_viewer import Ui_DCEFitViewer
 
 class DCEFitViewerTool(QMainWindow):
 
     # --------------------------------------------------------------------
     # --------------------------------------------------------------------
-    def __init__(self, DCE_dir=None, parent=None):
+    def __init__(self, DCE_dir=None, index_format = '02d', 
+        image_format = ".nii.gz", parent=None):
 
         #Create the UI
         QWidget.__init__(self, parent)
         self.ui = Ui_DCEFitViewer()
         self.ui.setupUi(self)
         self.setup_plot_axes()
+        self.image_format = image_format
+        self.index_format = index_format
+        self.showMaximized()
 
         #Initialize instance variables
         self.voxel_offset = 0
@@ -84,15 +86,17 @@ class DCEFitViewerTool(QMainWindow):
             return
 
         self.num_times =len(glob.glob(
-            os.path.join(self.DCE_dir, "Ct_sig", "Ct_sig" + image_format)))     
+            os.path.join(self.DCE_dir, "Ct_sig", "Ct_sig*" + self.image_format)))     
                
         if self.num_times:
-            roi = read_analyze_img(
-                os.path.join(self.DCE_dir, "ROI.hdr")) > 0
+            roi = read_analyze(
+                os.path.join(self.DCE_dir, f"ROI{self.image_format}"))[0] > 0
             self.Ct_s = get_dyn_vals(
-                os.path.join(self.DCE_dir, "Ct_sig", "Ct_sig"), self.num_times, roi)
+                os.path.join(self.DCE_dir, "Ct_sig", "Ct_sig"), self.num_times, roi,
+                    index_fmt = self.index_format, ext = self.image_format)
             self.Ct_m = get_dyn_vals(
-                os.path.join(self.DCE_dir, "Ct_mod", "Ct_mod"), self.num_times, roi)
+                os.path.join(self.DCE_dir, "Ct_mod", "Ct_mod"), self.num_times, roi,
+                    index_fmt = self.index_format, ext = self.image_format)
             self.sse = np.sqrt(np.sum((self.Ct_s - self.Ct_m)**2,1))
         else:
             QMessageBox.warning(self, 'No C(t) volumes found!', 
@@ -219,11 +223,18 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     DCE_dir = None
-    
+    image_format = '.nii.gz'
+    index_format = '02d'
     if len(sys.argv) > 1:
         DCE_dir = sys.argv[1]
 
-    myapp = DCEFitViewerTool(DCE_dir)
+    if len(sys.argv) > 2:
+        index_format = sys.argv[2]
+
+    if len(sys.argv) > 3:
+        image_format = sys.argv[3]
+
+    myapp = DCEFitViewerTool(DCE_dir, index_format = index_format, image_format=image_format)
     myapp.show()
     myapp.load_data()
 

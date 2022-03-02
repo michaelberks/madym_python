@@ -1,0 +1,22 @@
+#This sets up a conda environment for developing QbiPy
+# > conda env create -f qbipy_conda_env.yml
+# After environment is created, call
+# > conda develop ./src
+# So that the QbiPy module is available to import from source code
+name: qbipy_dev
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - pytest
+  - pytest-cov
+  - pdoc3
+  - numpy
+  - matplotlib
+  - scipy
+  - scikit-image
+  - nibabel
+  - ipykernel
+  - pip
+  - gitpython

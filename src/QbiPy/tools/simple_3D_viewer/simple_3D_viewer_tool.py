@@ -11,12 +11,10 @@ from PyQt5.QtGui import QImage, qRgb
 import numpy as np
 from scipy import ndimage
 
-from QbiPy.image_io.analyze_format import read_analyze_img
+from QbiPy.image_io.analyze_format import read_analyze
 from QbiPy.tools import qbiqscene as qs
 
-from QbiPy.tools.simple_3D_viewer.simple_3D_viewer import Ui_Simple3DViewer      
-
-image_format = "*.hdr"
+from QbiPy.tools.simple_3D_viewer.simple_3D_viewer import Ui_Simple3DViewer
 
 class Simple3DViewerTool(QMainWindow):
 
@@ -27,18 +25,20 @@ class Simple3DViewerTool(QMainWindow):
 
     # --------------------------------------------------------------------
     # --------------------------------------------------------------------
-    def __init__(self, image_dir=None, parent=None):
+    def __init__(self, image_dir=None, image_format = ".nii.gz", parent=None):
 
         #Create the UI
         QWidget.__init__(self, parent)
         self.ui = Ui_Simple3DViewer()
         self.ui.setupUi(self)
+        self.showMaximized()
         self.ui.scene1 = qs.QbiQscene()
         self.ui.leftGraphicsView.setScene(self.ui.scene1)
         self.ui.colorbar = qs.QbiQscene()
         self.ui.colorbarGraphicsView.setScene(self.ui.colorbar)
 
         #Initialize instance variables
+        self.image_format = image_format
         self.image_names = []
         self.num_images = 0
         self.curr_image = 0
@@ -74,7 +74,7 @@ class Simple3DViewerTool(QMainWindow):
             return
 
         self.image_names = [os.path.basename(f) for f in glob.glob(
-            os.path.join(self.image_dir, image_format))]
+            os.path.join(self.image_dir, f'*{self.image_format}'))]
         self.num_images = len(self.image_names)       
                
         if self.num_images:
@@ -103,7 +103,7 @@ class Simple3DViewerTool(QMainWindow):
             self.update_curr_image()
             
         else:
-            QMessageBox.warning(self, 'No subjects found!', 'No subjects found in ' + self.image_dir)
+            QMessageBox.warning(self, 'No images found!', f'No images of type {self.image_format} found in {self.image_dir}')
                 
     
     #--------------------------------------------------------------------------       
@@ -113,7 +113,7 @@ class Simple3DViewerTool(QMainWindow):
         for img_name in  self.image_names:
             img_path = os.path.join(self.image_dir, img_name)
 
-            img = read_analyze_img(img_path)
+            img = read_analyze(img_path)[0]
             self.images.append(img)
         
         if self.curr_image >= self.num_images:
@@ -367,12 +367,15 @@ if __name__ == "__main__":
 
     study_dir = None
     init_image = 0
+    image_format = '.nii.gz'
     if len(sys.argv) > 1:
         study_dir = sys.argv[1]
     if len(sys.argv) > 2:
         init_image = int(sys.argv[2])
+    if len(sys.argv) > 3:
+        image_format = sys.argv[3]
 
-    myapp = Simple3DViewerTool(study_dir)
+    myapp = Simple3DViewerTool(study_dir, image_format = image_format)
     myapp.show()
     myapp.get_image_list(init_image)
     sys.exit(app.exec_())
