@@ -79,8 +79,8 @@ class AIFViewerTool(QMainWindow):
                 self.AIF_dir + ' is not a directory, check disk is connected')
             return
 
-        self.AIF_names = [os.path.basename(f) for f in glob.glob(
-            os.path.join(self.AIF_dir, AIF_format))]
+        self.AIF_names = sorted([os.path.basename(f) for f in glob.glob(
+            os.path.join(self.AIF_dir, AIF_format))])
         self.num_AIFs = len(self.AIF_names)       
                
         if self.num_AIFs:

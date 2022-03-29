@@ -73,8 +73,8 @@ class Simple3DViewerTool(QMainWindow):
                 self.image_dir + ' is not a directory, check disk is connected')
             return
 
-        self.image_names = [os.path.basename(f) for f in glob.glob(
-            os.path.join(self.image_dir, f'*{self.image_format}'))]
+        self.image_names = sorted([os.path.basename(f) for f in glob.glob(
+            os.path.join(self.image_dir, f'*{self.image_format}'))])
         self.num_images = len(self.image_names)       
                
         if self.num_images:
