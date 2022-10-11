@@ -20,7 +20,9 @@ pytest:
     - html/
     reports:
       junit: report.xml
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 pages:
   stage: pages
