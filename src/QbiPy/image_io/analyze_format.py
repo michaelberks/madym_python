@@ -153,8 +153,8 @@ def read_analyze(filename: str=None,
         hdr_data : SimpleNamespace
             analyze format header data structure.
     '''
-    ext = os.path.splitext(filename)[1]
-    if ext.lower() == ".nii" or ext.lower() == ".gz":
+    ext = os.path.splitext(filename)[1].lower()
+    if ext == ".nii" or ext == ".gz":
         use_native = False
 
     if use_native:
@@ -162,7 +162,7 @@ def read_analyze(filename: str=None,
         img = read_analyze_img(hdr_data=hdr,
             output_type=output_type)
     else:     
-        img, hdr = analyze_from_nibabel(filename)
+        img, hdr = analyze_from_nibabel(filename, output_type=output_type)
     
     #images also get loaded in with the y-axis (after swapping!) reversed
     #(eg upside down). Use the flip_y flag to correct this
@@ -713,7 +713,7 @@ def read_analyze_hdr(filename, byte_order:str = None):
 
 ##-----------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------
-def analyze_from_nibabel(filename):
+def analyze_from_nibabel(filename, output_type = None):
     '''
     Reads in an Analyze/NIFTI image using nibabel, and converts
     the header to a simple namespace object as used by our native
@@ -968,7 +968,14 @@ def analyze_from_nibabel(filename):
     hdr_data.OMin           = None
     hdr_data.SMax           = None
     hdr_data.SMin           = None
+
+    #Set the sform matrix
+    hdr_data.SformMatrix = hdr.get_sform()
     
+    #Now cast to out datatype (leave unchanged if output_type is None)
+    if output_type is not None:
+        img = img.astype(output_type, copy=False)
+
     #We're done, return header data and image
     return img, hdr_data
 
@@ -977,7 +984,8 @@ def analyze_from_nibabel(filename):
 def write_analyze(img_data: np.array, filename: str,
     scale:float = 1.0, swap_axes:bool = True,
     flip_x: bool = False, flip_y: bool = True,
-    voxel_size=[1,1,1], dtype=None, sparse=False):
+    voxel_size=[1,1,1], dtype=None, sparse=False,
+    use_native = False):
     '''
     Wrapper to write_analyze_img for writing array to analyze 75 format image on disk,
     with some extra options for scaling and transforming data
@@ -1005,9 +1013,12 @@ def write_analyze(img_data: np.array, filename: str,
     #Check filename extension, 
     # if it's .img or .hdr leave alone
     # if it's anything else, append img
-    file_ext = os.path.splitext(filename)[1]
-    if file_ext != '.hdr' and file_ext != '.img':
-        filename = filename + ".img"
+    file_ext = os.path.splitext(filename)[1].lower()
+    if file_ext == '.nii' or file_ext == '.gz':
+        use_native = False
+
+    if use_native and file_ext != '.hdr' and file_ext != '.img':
+            filename = filename + ".img"
 
     #Finally, the QBI lab often used to save scaled output, we may want
     #to scale that during loading
@@ -1027,8 +1038,11 @@ def write_analyze(img_data: np.array, filename: str,
         img_data = np.swapaxes(img_data, 0, 1)
 
     #Call write analyze
-    write_analyze_img(img_data, filename, 
-        voxel_size=voxel_size, dtype=dtype, sparse=sparse)
+    if use_native:
+        write_analyze_img(img_data, filename, 
+            voxel_size=voxel_size, dtype=dtype, sparse=sparse)
+    else:
+        write_nifti_img(img_data, filename, sform_matrix=voxel_size, scale=scale, dtype=dtype)
 
     #Undo the scaling - not the most efficient, but saves taking a deep
     #copy
@@ -1086,21 +1100,7 @@ def write_analyze_img(data, filename, data_size=None, voxel_size=[1,1,1],
     if data_size is None:
         data_size = list(data.shape)
     
-    if dtype is None:
-        dtype = data.dtype
-    else:
-        #Forcing dtype through np.dtype here clears up ambiguity
-        #between a) whether given as string or np.dtype and b)
-        #the precision of ints and floats which may vary between
-        # platforms, numpy versions etc.
-        dtype = np.dtype(dtype)
-
-    # If the type is logical then use uint8
-    if dtype == np.bool:
-        dtype = np.uint8
-    #int64 not supported by analyze
-    elif dtype == np.int64:
-        dtype = np.int32
+    dtype = set_dtype(data, dtype)
 
     #If scaling not set, get from data
     if default_scaling is None:
@@ -1319,7 +1319,40 @@ def write_analyze_hdr(filename, data_size, voxel_size, dtype, scaling, sparse=Fa
     with open(filename, "wb") as fid:
         fid.write(hdr_array)
 
-    
+def write_nifti_img(img_data, filename, sform_matrix=np.eye(4), scale = 1.0, dtype = None):
+    '''
+    '''
+    dtype = set_dtype(img_data, dtype)
+    if not np.any(sform_matrix[:3,:3]):
+        sform_matrix = np.eye(4)
+        
+    nii_img = nib.Nifti1Image(
+        img_data.astype(dtype), sform_matrix)
+    nii_img.header['scl_inter'] = 0
+    nii_img.header['scl_slope'] = scale
+    nib.save(nii_img, filename)
+
+def set_dtype(data, dtype = None):
+    '''
+    '''
+    if dtype is None:
+        dtype_out = data.dtype
+    else:
+        #Forcing dtype through np.dtype here clears up ambiguity
+        #between a) whether given as string or np.dtype and b)
+        #the precision of ints and floats which may vary between
+        # platforms, numpy versions etc.
+        dtype_out = np.dtype(dtype)
+
+    # If the type is logical then use uint8
+    if dtype_out == np.bool:
+        dtype_out = np.uint8
+    #int64 not supported by analyze
+    elif dtype_out == np.int64:
+        dtype_out = np.int32
+
+    return dtype_out
+   
 
 
 
