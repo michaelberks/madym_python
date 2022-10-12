@@ -37,7 +37,7 @@ class QbiRunner():
             help='Flag to allow overwriting previous output')
         
         #Name of program log
-        self.parser.add('--program_log', type=str, nargs='?', default='program_log',
+        self.parser.add('--program_log', type=str, nargs='?', default='_program_log',
             help='Name of the program log, will be appended with timestamp')
 
         #Name of audit log
@@ -45,11 +45,11 @@ class QbiRunner():
             help='Directory of the audit log, either absolute or relative to the cwd')
 
         #Name of audit log
-        self.parser.add('--audit_log', type=str, nargs='?', default='audit_log',
+        self.parser.add('--audit_log', type=str, nargs='?', default='_audit_log',
             help='Name of the audit log, will be appended with timestamp')
 
         #Name of config log
-        self.parser.add('--config_log', type=str, nargs='?', default='config_log',
+        self.parser.add('--config_log', type=str, nargs='?', default='_config_log',
             help='Name of the config log, will be appended with timestamp')
         
         #Program log flag
@@ -101,18 +101,18 @@ def run_with_logging(options, args, fun):
 
     #Get current datetime
     date_str = datetime.today().strftime('%Y%m%d_%H%M%S')
-
+    
     #Create timestamped paths to log files
     program_log_path = os.path.join(
-        options.output_dir, options.program_log + date_str + '.txt')
+        options.output_dir, fun.__name__ + options.program_log + date_str + '.txt')
     config_log_path = os.path.join(
-        options.output_dir, options.config_log + date_str + '.txt')
+        options.output_dir, fun.__name__ + options.config_log + date_str + '.txt')
 
     #Initialise audit log if not flagged otherwise
     do_audit = not options.no_audit
     if do_audit:
         audit_log_path = os.path.join(
-            options.audit_dir, options.audit_log + date_str + '.txt')
+            options.audit_dir, fun.__name__ + options.audit_log + date_str + '.txt')
         initialise_audit_log(audit_log_path, program_log_path)
 
     #Open program log file
@@ -136,6 +136,7 @@ def run_with_logging(options, args, fun):
 
 #-----------------------------------------------
 def initialise_audit_log(audit_log_path, program_log_path):
+    os.makedirs(os.path.dirname(audit_log_path), exist_ok = True)
     with open(audit_log_path, 'wt') as log:
         initialise_log(log)
         print(f'Program log saved to {program_log_path}', file=log)
