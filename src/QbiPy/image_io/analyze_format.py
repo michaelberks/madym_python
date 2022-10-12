@@ -18,7 +18,7 @@ from QbiPy.image_io import xtr_files
 #Define matching format strings in analyze, numpy and struct
 #and methods for looking up one given the other
 format_strings = [
-    ('DT_BINARY', np.bool, 'B'),
+    ('DT_BINARY', bool, 'B'),
     ('DT_UNSIGNED_CHAR', np.uint8, 'B'),
     ('DT_SIGNED_SHORT', np.int16, 'h'),
     ('DT_SIGNED_INT', np.int32, 'i'),
@@ -985,7 +985,7 @@ def write_analyze(img_data: np.array, filename: str,
     scale:float = 1.0, swap_axes:bool = True,
     flip_x: bool = False, flip_y: bool = True,
     voxel_size=[1,1,1], dtype=None, sparse=False,
-    use_native = False):
+    use_native = True):
     '''
     Wrapper to write_analyze_img for writing array to analyze 75 format image on disk,
     with some extra options for scaling and transforming data
@@ -1323,9 +1323,19 @@ def write_nifti_img(img_data, filename, sform_matrix=np.eye(4), scale = 1.0, dty
     '''
     '''
     dtype = set_dtype(img_data, dtype)
-    if not np.any(sform_matrix[:3,:3]):
+    try:
+        sform_matrix = np.array(sform_matrix)
+    except:
         sform_matrix = np.eye(4)
-        
+
+    if sform_matrix.size == 3:
+        voxel_sizes = sform_matrix.flatten()
+        sform_matrix = np.eye(4)
+        sform_matrix[(0,1,2),(0,1,2)] = voxel_sizes
+
+    if sform_matrix.shape != (4,4) and not np.any(sform_matrix[:3,:3]):
+        sform_matrix = np.eye(4)
+
     nii_img = nib.Nifti1Image(
         img_data.astype(dtype), sform_matrix)
     nii_img.header['scl_inter'] = 0
@@ -1345,7 +1355,7 @@ def set_dtype(data, dtype = None):
         dtype_out = np.dtype(dtype)
 
     # If the type is logical then use uint8
-    if dtype_out == np.bool:
+    if dtype_out == bool:
         dtype_out = np.uint8
     #int64 not supported by analyze
     elif dtype_out == np.int64:

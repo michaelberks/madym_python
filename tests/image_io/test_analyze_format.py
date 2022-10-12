@@ -155,13 +155,12 @@ def test_analyze_write_read_scale(scale):
     img_r = analyze_format.read_analyze(
         img_name, 
         scale = scale)[0]
+    temp_dir.cleanup()
 
     #Check read image matches original
     print(f"Test read: flip {scale}")
     assert img_real.shape == img_r.shape
     assert np.all(img_real == img_r)
-
-    temp_dir.cleanup()
 
 #Test the format conversion aux fucntions for consistency
 @pytest.mark.parametrize("ana_str", [
@@ -198,3 +197,45 @@ def test_big_endian():
     img,hdr = analyze_format.read_analyze(img_path)
     assert img.shape == (128,128,25)
     assert hdr.ByteOrder == 'ieee-be'
+
+@pytest.mark.parametrize("ext",
+    [('.nii.gz'), ('.nii.gz')])
+def test_read_write_nifti_ext(ext):
+    #Create temp location for the read/write
+    temp_dir = TemporaryDirectory()
+    img_name = os.path.join(temp_dir.name, 'test_img' + ext)
+
+    #Write to nifti image
+    print(f"Test nifti write: {ext}")
+    analyze_format.write_analyze(img_real, img_name)
+    img_r, img_hdr = analyze_format.read_analyze(img_name)
+    temp_dir.cleanup()
+
+    #Check read image matches original
+    print(f"Test nifti read: {ext}")
+    assert img_real.shape == img_r.shape
+    assert np.all(img_real == img_r)
+    assert np.all(img_hdr.SformMatrix == np.eye(4))
+
+@pytest.mark.parametrize("sform_matrix",
+    [(np.array([2,3,4])), (np.diag([2,3,4,1]))])
+def test_read_write_nifti_sform(sform_matrix):
+    #Create temp location for the read/write
+    temp_dir = TemporaryDirectory()
+    img_name = os.path.join(temp_dir.name, 'test_img.nii.gz')
+
+    #Write to nifti image
+    print(f"Test nifti write: sform_matrix shape = {sform_matrix.shape}")
+    analyze_format.write_analyze(img_real, img_name, voxel_size=sform_matrix)
+    img_r, img_hdr = analyze_format.read_analyze(img_name)
+    temp_dir.cleanup()
+
+    #Check read image matches original
+    print(f"Test read: sform_matrix shape = {sform_matrix.shape}")
+    assert img_real.shape == img_r.shape
+    assert np.all(img_real == img_r)
+    if sform_matrix.size == 3:
+        assert np.all(img_hdr.SformMatrix[(0,1,2),(0,1,2)] == sform_matrix)
+    else:
+        assert np.all(img_hdr.SformMatrix == sform_matrix)
+    
