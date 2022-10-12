@@ -38,6 +38,9 @@ def convert_nifti(nifti_im:str, dicom_im:str, output_dir:str,
         nifti_im = nib.load(nifti_im)
     img = nifti_im.get_fdata()
     hdr = nifti_im.header
+    
+    #Make sure image is 4D - expanding dims if necssary - then get dimensions
+    img.shape += (1,) * (4 - img.ndim)
     n_rows, n_cols, n_slices, n_times = img.shape
 
     #Apply axes flips

@@ -41,6 +41,10 @@ class QbiRunner():
             help='Name of the program log, will be appended with timestamp')
 
         #Name of audit log
+        self.parser.add('--audit_dir', type=str, nargs='?', default='audit_logs',
+            help='Directory of the audit log, either absolute or relative to the cwd')
+
+        #Name of audit log
         self.parser.add('--audit_log', type=str, nargs='?', default='audit_log',
             help='Name of the audit log, will be appended with timestamp')
 
@@ -108,7 +112,7 @@ def run_with_logging(options, args, fun):
     do_audit = not options.no_audit
     if do_audit:
         audit_log_path = os.path.join(
-            options.output_dir, options.audit_log + date_str + '.txt')
+            options.audit_dir, options.audit_log + date_str + '.txt')
         initialise_audit_log(audit_log_path, program_log_path)
 
     #Open program log file
