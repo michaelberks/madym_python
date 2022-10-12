@@ -11,7 +11,7 @@ pytest:
   image: registry.gitlab.com/manchester_qbi/manchester_qbi_public/qbipy/qbipy_depends
   stage: test
   script:
-    - pip install configargparse
+    - pip install configargparse pydicom
     - pytest --cov=src/ --cov-config=.coveragerc --cov-report=html --cov-report=xml --junitxml=report.xml
     - pdoc3 src/QbiPy --html --force
   artifacts:
