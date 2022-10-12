@@ -1333,7 +1333,7 @@ def write_nifti_img(img_data, filename, sform_matrix=np.eye(4), scale = 1.0, dty
         sform_matrix = np.eye(4)
         sform_matrix[(0,1,2),(0,1,2)] = voxel_sizes
 
-    if sform_matrix.shape != (4,4) and not np.any(sform_matrix[:3,:3]):
+    if sform_matrix.shape == (4,4) and not np.any(sform_matrix[:3,:3]):
         sform_matrix = np.eye(4)
 
     nii_img = nib.Nifti1Image(

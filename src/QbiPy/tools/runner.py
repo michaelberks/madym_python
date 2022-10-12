@@ -59,7 +59,7 @@ class QbiRunner():
     #----------------------------------------------
     def parse_args(self, args = None):
         if args is None:
-            args = sys.argv
+            args = sys.argv[1:]
         return self.parser.parse_args(args)
 
     #-----------------------------------------------
