@@ -1,10 +1,163 @@
 '''
+This module provides a class QbiRunner that can be used to wrap any python
+function, so that the function can be called from the command line, reading
+inputs from a config file or environment variables, and generating program log
+files to an output folder with minimal extra code required.
+
+It is primarily designed for functions that read data from a given folder (and 
+sub-folders), then process that data to generate results saved in the output
+folder, but it can be run with any function.
+
+For example, consider a simple function:
+
+def print_a_plus_b(var_a, var_b):
+    print(a, b)
+
+By creating a new QbiRunner object, we can call this function:
+
+args = ['a', '2', 'b', '3']
+
+runner = QbiRunner('')
+runner.parser.add('--var_a', type=int)
+runner.parser.add('--var_b', type=int)
+runner.run(print_a_plus_b, args)
+
+This will run and create the following objects:
+
+- an audit log folder `audit_logs` in the current directory,
+containing an audit log listing the function called, the user,
+the host and the location of the program log.
+
+- an output folder, `print_a_plus_b_output` containing a program log
+that contains stdout and stderr from the function call, so in this case
+reads 3. The output folder will also contain a config file listing
+all options the function was run with.
+
+If the above snippet is placed in a script in the main block,
+the args will be read from the command line. So for example if
+we create a file run_print_a_plus_b.py, containing:
+
+from QbiPy.tools.runner import QbiRunner
+
+def print_a_plus_b(var_a, var_b):
+    print(a, b)
+
+if __name__ == "__main__":
+    runner = QbiRunner('')
+    runner.parser.add('--var_a', type=int)
+    runner.parser.add('--var_b', type=int)
+    runner.run(print_a, args)
+
+We can now call this at the command line like:
+> python print_a_plus_b --var_a 2 --var_b 3
+
+The QbiRunner class automatically deals with config files, so we
+could create a simple file config.txt containing:
+var_a = 2
+var_b = 3
+
+And now call:
+> python print_a_plus_b --config config.txt
+
+We can also call for help in the usual way:
+> python print_a_plus_b -h
+> python print_a_plus_b --help
+
+Any additional arguments to the function can be added in the same way,
+by calling runner.parser.add.
+
+Note the parser here is an ArgParser from the configargparse package 
+(https://pypi.org/project/ConfigArgParse/), for which the add function
+has identical behaviour to python's in-built argparse class.
+
+By using configargparse, these options can be set either at the command
+line, via an environment variable or in a config file. Options are
+set with the following precendence:
+command line > environment variables > config file values > defaults
+
+# In-built options in the runner class
+
+In addition to those set manually, by calling the function through 
+the runner, we automatically have access to the following options:
+
+--config (str, None) to call a config file as in the above example. The config file
+will be read using configargparse (https://pypi.org/project/ConfigArgParse/)
+
+--data_dir (str, None) path to a folder from which the output folder is relative. If
+not set, defaults to the current working directory
+
+--output_dir (str, None) relative path to the output folder from data_dir. If not set
+defaults to the function name suffixed with `_output`
+
+--overwrite (bool, True) if set to false, an error is returned if the output
+folder already exists
+        
+--program_log (str, '_program_log') name of the program log, 
+will be appended to the function name and suffixed with a timestamp
+
+--audit_dir (str, 'audit_logs') directory of the audit log, either absolute or 
+relative to the cwd
+
+--audit_log (str, '_audit_log') name of the audit log, will be appended 
+to the function name and suffixed with a timestamp
+
+--config_log (str, '_config_log') name of the output config log, will be appended 
+to the function name and suffixed with a timestamp
+        
+--no_log (bool, False), flag to turn off program logging. 
+stdout and stderr will be piped to the screen as normal
+
+--no_audit (bool, False) flag to turn off audit logging
+
+--error_exit_code (int, 1) value to return if the function raises
+an exception. The exception will be caught and printed to the output
+logs. On some systems (eg XNAT) it is preferable for python to still
+return a zero exit code so all output handlers run correctly, in which
+case error_exit_code can be set to 0
+
+Note the function you pass to the runner is welcome to re-use any of
+the above options. Indeed it is anticipated it will make use of 
+data_dir (to load input data) and output_dir (to write out results).
+However it should not attempt to redefine arguments of the same name
+by adding them to the parser.
+
+In other words, do NOT do:
+
+    runner.parser.add('--output_dir',...)
+
+# Handling boolean inputs
+
+Note to handle bools intuitively at the command line or in config files,
+we recommend importing bool_option and using this as the type when calling
+parser.add. For example
+
+from QbiPy.tools.runner import QbiRunner, bool_option
+
+runner = QbiRunner('')
+runner.parser.add('--my_flag', type=bool_option)
+
+my_flag will be created as a bool such that:
+
+    - 'yes', 'true', 't', 'y', '1' convert to True
+
+    - 'no', 'false', 'f', 'n', '0' convert to False
+
+These conversions are case insensitive.
+
+This is particularly helpful for being able to set flags that default
+to true as false in a command file.
+
+Of course, you are welcome to write your own string to bool function
+and pass this to parser.add instead.
+
+
 '''
 import os
 import sys
 import socket
 import getpass
 import inspect
+import traceback
 
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
@@ -29,11 +182,15 @@ class QbiRunner():
             help='Path to config file')
 
         #Ouput folder
+        self.parser.add('--data_dir', type=str, nargs='?', default=None,
+            help='Path to the data')
+
+        #Ouput folder
         self.parser.add('--output_dir', type=str, nargs='?', default=None,
             help='Relative path to the output folder')
 
         #Overwrite flag
-        self.parser.add('--overwrite', type=bool, nargs='?', default=True, const = True,
+        self.parser.add('--overwrite', type=bool_option, nargs='?', default=True, const = True,
             help='Flag to allow overwriting previous output')
         
         #Name of program log
@@ -53,12 +210,16 @@ class QbiRunner():
             help='Name of the config log, will be appended with timestamp')
         
         #Program log flag
-        self.parser.add('--no_log', type=bool, nargs='?', default=False, const = False,
+        self.parser.add('--no_log', type=bool_option, nargs='?', default=False, const = False,
             help='Flag to turn off program logging. Info is printed to stdout')
 
         #Audit log flag
-        self.parser.add('--no_audit', type=bool, nargs='?', default=False, const = False,
+        self.parser.add('--no_audit', type=bool_option, nargs='?', default=False, const = False,
             help='Flag to turn off audit logging.')
+
+        #Audit log flag
+        self.parser.add('--error_exit_code', type=int, nargs='?', default=1, const = False,
+            help='Code returned on error.')
         
     #----------------------------------------------
     def parse_args(self, args = None):
@@ -91,12 +252,49 @@ class QbiRunner():
 
         #If user set no log, then just run the function
         if options.no_log:
-            fun(**args)
+            success = run_catch(args, fun)
         else:
-            run_with_logging(options, args, fun)
+            success = run_with_logging(options, args, fun)
+
+        #If the function ran without raising an exception, return 0,
+        #otherwise, return the value set in options.error_exit_code
+        if success:
+            exit_code = 0
+        else:
+            exit_code = options.error_exit_code
+
+        return exit_code
+
+#-----------------------------------------------
+def run_catch(args, fun):
+    '''
+    Trying running fun with input **args. If an exception is raised,
+    catch it, print it and return False.
+
+    If the function runs to completion, return true.
+    '''
+    try:
+        fun(**args)
+        success = True
+    except Exception: 
+        print(traceback.format_exc())
+        success = False
+
+    return success
 
 #-----------------------------------------------
 def run_with_logging(options, args, fun):
+    '''
+    Run the function fun with inputs **args, creating program, config
+    and audit logs as specified by the options.
+
+    If a program log is created (ie. options.no_log = False) then
+    all stderr and stdout will be redirected to the log.
+
+    fun will be called via run_catch, so any exceptions raised will be
+    caught and logged. This function will return True if fun ran to
+    completion and False if an exception was caught
+    '''
     #Need to set-up logging info
 
     #Get current datetime
@@ -125,35 +323,56 @@ def run_with_logging(options, args, fun):
         #Run the function within the context of stdout and stderr being
         #redirected to the program log
         with redirect_stderr(program_log), redirect_stdout(program_log):
-            fun(**args)
+            success = run_catch(args, fun)
 
         #Finalise the program log
-        finalise_log(program_log)
+        finalise_log(program_log, success)
 
     #Finalise the audit log
     if do_audit:
-        finalise_audit_log(audit_log_path)
+        finalise_audit_log(audit_log_path, success)
+
+    return success
 
 #-----------------------------------------------
 def initialise_audit_log(audit_log_path, program_log_path):
+    '''
+    Create a new audit log at the specified path
+    '''
     os.makedirs(os.path.dirname(audit_log_path), exist_ok = True)
     with open(audit_log_path, 'wt') as log:
         initialise_log(log)
         print(f'Program log saved to {program_log_path}', file=log)
 
 #-----------------------------------------------
-def finalise_audit_log(audit_log_path):
+def finalise_audit_log(audit_log_path, success):
+    '''
+    Finalise the audit log
+    '''
     with open(audit_log_path, 'at') as log:
-        finalise_log(log)
+        finalise_log(log, success)
 
 #-----------------------------------------------
-def finalise_log(log):  
-    print(f'{sys.argv[0]} completed successfully.', file=log)
+def finalise_log(log, success):  
+    '''
+    Finalise an open audit/program log with file object log,
+    logging the time of completion and whether the function
+    exited successfully of raised an exception
+    '''
+    if success:
+        print(f'{sys.argv[0]} completed successfully.', file=log)
+    else:
+        print(f'{sys.argv[0]} exited with errors. Check logs.', file=log)
+
     date_str = datetime.today().strftime('%Y%m%d %H:%M:%S')
     print(f'Log closed at {date_str}', file=log)
 
 #-----------------------------------------------
 def initialise_log(log):
+    '''
+    Initialise an open audit/program log with file object log,
+    logging the start time, user, host and command-line args
+    '''
     date_str = datetime.today().strftime('%Y%m%d %H:%M:%S')
     print(f'Log opened at {date_str}', file=log)
     print(f'User: {getpass.getuser()};   Host: {socket.gethostname()}', file=log)
@@ -163,6 +382,11 @@ def initialise_log(log):
 
 #-----------------------------------------------
 def write_config_log(options, config_log_path):
+    '''
+    Write the complete set of options (formed from a combination
+    of command-line, environment variable, config file and defaults)
+    to an output file.
+    '''
     with open(config_log_path, 'wt') as log:
         for option, value in options.__dict__.items():
             print(f'{option} = {value}', file = log)
@@ -194,5 +418,29 @@ def get_function_args(fun, options):
             args_dict[arg] = value
 
     return args_dict
+
+#-----------------------------------------------
+def bool_option(v):
+    '''
+    Convert various string inputs that might be interpreted as yes/no, true/false to bool.
+    If input is already a bool, just return itself
+    Inputs:
+        v : str
+            variable to convert to bool
+    Notes:
+        'yes', 'true', 't', 'y', '1' convert to True
+
+        'no', 'false', 'f', 'n', '0' convert to False
+
+        Any other input raises an argparse ArgumentTypeError
+    '''
+    if isinstance(v, bool):
+       return v
+    if str(v).lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif str(v).lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise configargparse.ArgumentTypeError('Boolean value expected.')
         
 

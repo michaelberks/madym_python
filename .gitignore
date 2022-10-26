@@ -149,3 +149,4 @@ AuditLog.txt
 #Local hack around scripts
 *dummy.py
 *sandpit.py
+sandpit*
