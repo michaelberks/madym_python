@@ -194,9 +194,12 @@ def set_pixel_array(slice_array, dicom_im):
     '''
     scaled_array = (slice_array - dicom_im.RescaleIntercept) / dicom_im.RescaleSlope
     dicom_im.PixelData = scaled_array.astype('uint16').tobytes()
-    if 'LargestImagePixelValue' in dicom_im: 
-        dicom_im.LargestImagePixelValue.VR = 'US'
-        dicom_im.LargestImagePixelValue = np.max(scaled_array.astype('uint16'))
+    if 'LargestImagePixelValue' in dicom_im:
+        try: 
+            dicom_im['LargestImagePixelValue'].VR = 'US'
+            dicom_im.LargestImagePixelValue = np.max(scaled_array.astype('uint16'))
+        except:
+            pass
     
 def write_slice(dicom_im, dicom_name, slice, slice_array, 
     origin, slice_axis, index):
