@@ -6,31 +6,69 @@ basic approach
 #%%
 import os
 import glob
+import warnings
+from datetime import datetime
 
 import numpy as np
 import nibabel as nib
+
 import pydicom
+from pydicom import uid
+from pydicom.dataset import Dataset, FileMetaDataset
+from pydicom.sequence import Sequence
 
-
+default_attributes_from_base = [
+    'PatientName',
+    'PatientID',
+    'PatientBirthDate',
+    'PatientSex',
+    'PatientWeight',
+    'BodyPartExamined',
+    'StudyDate',
+    'StudyTime',
+    'MRAcquisitionType',
+    'PatientPosition',
+    'StudyInstanceUID',
+    'StudyID',
+    'FrameOfReferenceUID',
+    'PositionReferenceIndicator'
+]
 
 #%%
-def convert_nifti(nifti_im:str, dicom_im:str, output_dir:str,
-    series_name:str, series_number:str,
-    slice_name:str = 'DCM', sequence_fmt:str = '04d',
-    start_index = 1,
-    acquisition_number = None,
-    number_of_temporal_positions = None,
-    temporal_position = None,
-    override_voxel_spacing = False,
-    override_orientation = False,
-    voxel_min = None,
-    voxel_max = None,
-    nan_default = 0,
-    scaling = None,
-    offset = None,
-    flip_x = False,
-    flip_y = False,
-    flip_z = False):
+def convert_nifti(
+    nifti_im:str, 
+    dicom_base:str, 
+    output_dir:str,
+    series_name:str, 
+    series_number:str,
+    slice_name:str = 'DCM', 
+    sequence_fmt:str = '04d',
+    start_index:int = 1,
+    acquisition_number:int = None,
+    number_of_temporal_positions:int = None,
+    temporal_position:int = None,
+    override_voxel_spacing:bool = False,
+    override_orientation:bool = False,
+    voxel_min:float = None,
+    voxel_max:float = None,
+    nan_default:float = 0,
+    scaling:float = None,
+    offset:float = None,
+    flip_x:bool = False,
+    flip_y:bool = False,
+    flip_z:bool = False,
+    uid_org_root:str = None,
+    creator_uid:str = None,
+    creator_uid_names:list = None,
+    attributes_from_base:list = None,
+    manufacturer:str = '',
+    analysis_type:str = '',
+    modality:str = 'qMRI analysis',
+    map_units:str = 'normalized',
+    image_type:list = [],
+    software_versions:list = None,
+    LUT_explanation:str = None,
+    coding_scheme_designator:str = 'UCUM'):
     '''
     '''
     #Get nifti dims
@@ -57,16 +95,62 @@ def convert_nifti(nifti_im:str, dicom_im:str, output_dir:str,
     sform = nifti_im.get_sform()
     sform[2,:] *= -1
 
-    #Load dicom base image and set fields common to all slices
-    if type(dicom_im) == str:
-        dicom_im = pydicom.dcmread(dicom_im)
+    #Set creator UID
+    if creator_uid is None:
+        creator_uid = uid.generate_uid(uid_org_root, entropy_srcs = creator_uid_names)
+
+    #Create new DICOM dataset and fill some generic attributes
+    dicom_im = Dataset()
+    dicom_im.SOPClassUID = '1.2.840.10008.5.1.4.1.1.4'
+    dicom_im.Modality = modality
+    dicom_im.ImageType = image_type
+    dicom_im.InstanceCreatorUID = creator_uid
+    dicom_im.RequestedProcedureDescription = analysis_type
+    dicom_im.Manufacturer = manufacturer
+    dicom_im.is_implicit_VR = False
+    dicom_im.is_little_endian = True
+    if software_versions is not None:
+        dicom_im.SoftwareVersions = software_versions
+
+    #Set attributes from the base image
+    if type(dicom_base) == str:
+        dicom_base = pydicom.dcmread(dicom_base)
+    if attributes_from_base is None:
+        attributes_from_base = default_attributes_from_base
+    for attribute in attributes_from_base:
+        set_attribute_from_base(dicom_im, dicom_base, attribute)
+
+    #Set series name and number
     dicom_im.ProtocolName = series_name
     dicom_im.SeriesDescription = series_name
     dicom_im.SeriesNumber = series_number
     if acquisition_number is None:
         acquisition_number = series_number
     dicom_im.AcquisitionNumber = acquisition_number
-    
+
+    #Set time and date fields
+    time = datetime.utcnow()
+    datestr_day = time.strftime('%Y%m%d')
+    datestr_time = time.strftime('%H%M%S.%f')[:-3]
+    dicom_im.InstanceCreationDate = datestr_day
+    dicom_im.InstanceCreationTime = datestr_time
+    dicom_im.SeriesDate = datestr_day
+    dicom_im.AcquisitionDate = datestr_day
+    dicom_im.ContentDate = datestr_day
+    dicom_im.SeriesTime = datestr_time
+    dicom_im.AcquisitionTime = datestr_time
+    dicom_im.ContentTime = datestr_time
+
+    #Set required MR fields that make more sense to be empty/0 for an output map
+    dicom_im.ReferringPhysicianName = ''
+    dicom_im.AccessionNumber = ''
+    dicom_im.ScanningSequence = 'RM'
+    dicom_im.SequenceVariant = 'NONE'
+    dicom_im.ScanOptions = ''
+    dicom_im.RepetitionTime = 0
+    dicom_im.EchoTime = 0
+    dicom_im.EchoTrainLength = 0
+
     #Set slice dimensions
     dicom_im.Rows = n_rows
     dicom_im.Columns = n_cols
@@ -81,10 +165,15 @@ def convert_nifti(nifti_im:str, dicom_im:str, output_dir:str,
         dicom_im.SpacingBetweenSlices = np.linalg.norm(sform[:,2])
         dicom_im.SliceThickness = hdr.get('pixdim')[3]
         dicom_im.PixelSpacing  = hdr.get('pixdim')[1:3].tolist()
+    else:
+        for attribute in ['SpacingBetweenSlices', 'SliceThickness', 'PixelSpacing']:
+            set_attribute_from_base(dicom_im, dicom_base, attribute)
     
     #Set axes orientation
     if override_orientation or flip_x or flip_y:
         dicom_im.ImageOrientationPatient = orientation_from_sform(sform, flip_x, flip_y)
+    else:
+        set_attribute_from_base(dicom_im, dicom_base, 'ImageOrientationPatient')
 
     #Get transformed origin
     origin,slice_axis = origin_from_sform(
@@ -106,22 +195,58 @@ def convert_nifti(nifti_im:str, dicom_im:str, output_dir:str,
     if scaling is None:
         img_max = np.max(img[np.isfinite(img)])
         scaling = (img_max - offset) / (2**16 - 1)
-    
-    dicom_im.RescaleIntercept = offset
-    dicom_im.RescaleSlope = scaling
-    dicom_im.RescaleType = 'normalized'
 
+    print(f'Grayscale offset = {offset}, scaling = {scaling}')
+    
+    dicom_im.RescaleIntercept = truncate_num(offset)
+    dicom_im.RescaleSlope = truncate_num(scaling)
+    dicom_im.RescaleType = map_units
+
+    #Set real world mapping info
+    if LUT_explanation is not None:
+        real_world_value_mapping_sequence = Sequence()
+        dicom_im.RealWorldValueMappingSequence = real_world_value_mapping_sequence
+
+        # Real World Value Mapping Sequence: Real World Value Mapping 1
+        real_world_value_mapping1 = Dataset()
+        real_world_value_mapping1.LUTExplanation = LUT_explanation
+
+        # Measurement Units Code Sequence
+        measurement_units_code_sequence = Sequence()
+        real_world_value_mapping1.MeasurementUnitsCodeSequence = measurement_units_code_sequence
+
+        # Measurement Units Code Sequence: Measurement Units Code 1
+        measurement_units_code1 = Dataset()
+        measurement_units_code1.CodeValue = map_units
+        measurement_units_code1.CodingSchemeDesignator = coding_scheme_designator
+        measurement_units_code1.CodeMeaning = map_units
+        measurement_units_code_sequence.append(measurement_units_code1)
+
+        real_world_value_mapping1.LUTLabel = manufacturer
+        real_world_value_mapping1.RealWorldValueLastValueMapped = 4095
+        real_world_value_mapping1.RealWorldValueFirstValueMapped = 0
+        real_world_value_mapping1.RealWorldValueIntercept = offset
+        real_world_value_mapping1.RealWorldValueSlope = scaling
+        real_world_value_mapping_sequence.append(real_world_value_mapping1)
+
+    #Set pixel storage information
     dicom_im.PhotometricInterpretation = "MONOCHROME2"
+    dicom_im.PresentationLUTShape = 'IDENTITY'
     dicom_im.SamplesPerPixel = 1
     dicom_im.BitsStored = 16
     dicom_im.BitsAllocated = 16
     dicom_im.HighBit = 15
     dicom_im.PixelRepresentation = 0
 
-    #Get Instance UID
-    instance_UID = '.'.join(dicom_im.SOPInstanceUID.split('.')[:-2])
-    instance_UID += f'.{series_number}'
-    dicom_im.SeriesInstanceUID = instance_UID
+    #Set series UID
+    dicom_im.SeriesInstanceUID = uid.generate_uid(uid_org_root)
+
+    #Set file meta data
+    # File meta info data elements
+    file_meta = FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = uid.UID('1.2.840.10008.5.1.4.1.1.4')
+    file_meta.TransferSyntaxUID = uid.ExplicitVRLittleEndian
+    dicom_im.file_meta = file_meta
 
     #Create the output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -139,7 +264,9 @@ def convert_nifti(nifti_im:str, dicom_im:str, output_dir:str,
         for slice in range(n_slices):
             idx = time*n_slices + slice + start_index
             dicom_name = os.path.join(output_dir, f'{slice_name}{idx:{sequence_fmt}}')
-            dicom_im.SOPInstanceUID = instance_UID + f'.{idx}'
+            instance_uid = uid.generate_uid(uid_org_root)
+            dicom_im.SOPInstanceUID = instance_uid
+            dicom_im.file_meta.MediaStorageSOPInstanceUID = instance_uid
             write_slice(
                 dicom_im, dicom_name, slice, img[:,:,slice,time], 
                 origin, slice_axis, idx)
@@ -149,6 +276,24 @@ def convert_nifti(nifti_im:str, dicom_im:str, output_dir:str,
         f'for series {series_name} ({series_number})')
     return converted_slices
 
+#-----------------------------------------------------------------
+def truncate_num(num, max_len = 16):
+    '''
+    '''
+    return f'{num:.8e}'
+
+#-----------------------------------------------------------------
+def set_attribute_from_base(dicom_image, dicom_base, attribute):
+    '''
+    '''
+    try:
+        dicom_image[attribute] = dicom_base[attribute]
+
+    except:
+        warnings.warn(
+            f'Cannot set {attribute} in converted DICOM as it is not set in base image')
+
+#-----------------------------------------------------------------
 def origin_from_sform(sform, flip_x, flip_y, flip_z, nx, ny, nz):
     '''
     '''
@@ -161,8 +306,10 @@ def origin_from_sform(sform, flip_x, flip_y, flip_z, nx, ny, nz):
 
     origin = -sform[0:3,3] + offset_u + offset_v + offset_w
     slice_axis = sform[0:3,2] if flip_z else -sform[0:3,2]
+    
     return origin, slice_axis
 
+#------------------------------------------------------------------
 def orientation_from_sform(sform, flip_x, flip_y):
     '''
     Convert the image position and orientation from NIFTI's sform fields
@@ -180,19 +327,21 @@ def orientation_from_sform(sform, flip_x, flip_y):
     axes_orientation[0:3] = sign_u * sform[0:3,0] / dx
     axes_orientation[3:6] = sign_v * sform[0:3,1] / dy
 
-    return axes_orientation.tolist()
+    axes_orientation_list = [truncate_num(o) for o in axes_orientation.tolist()]
+    return axes_orientation_list
 
 def get_slice_origin(origin, slice_num, slice_axis):
     '''
 
     '''
     slice_origin = origin + slice_axis*slice_num
-    return slice_origin.tolist()
+    slice_origin_list = [truncate_num(o) for o in slice_origin.tolist()]
+    return slice_origin_list
 
 def set_pixel_array(slice_array, dicom_im):
     '''
     '''
-    scaled_array = (slice_array - dicom_im.RescaleIntercept) / dicom_im.RescaleSlope
+    scaled_array = (slice_array - float(dicom_im.RescaleIntercept)) / float(dicom_im.RescaleSlope)
     dicom_im.PixelData = scaled_array.astype('uint16').tobytes()
     if 'LargestImagePixelValue' in dicom_im:
         try: 
@@ -221,33 +370,47 @@ def write_slice(dicom_im, dicom_name, slice, slice_array,
     set_pixel_array(slice_array, dicom_im)
 
     #Save the dicom_im
-    dicom_im.save_as(dicom_name)
+    dicom_im.save_as(dicom_name, write_like_original=False)
     #print('Saved ', dicom_name)
 
-def convert_nifti_dir(nifti_dir:str, dicom_im:str, 
+def convert_nifti_dir(
+    nifti_dir:str, 
+    dicom_base:str, 
     time_series:bool = False,
-    series_start = None,
-    series_step = 1,
+    series_start:int = None,
+    series_step:int = 1,
     ext:str = 'nii.gz',
     slice_name:str = 'DCM', 
     sequence_fmt:str = '04d',
-    start_index = 1,
-    override_voxel_spacing = False,
-    override_orientation = False,
-    voxel_min = None,
-    voxel_max = None,
-    nan_default = 0,
-    scaling = None,
-    offset = None,
-    flip_x = False,
-    flip_y = False,
-    flip_z = False):
+    start_index:int = 1,
+    override_voxel_spacing:bool = False,
+    override_orientation:bool = False,
+    voxel_min:float = None,
+    voxel_max:float = None,
+    nan_default:float = 0,
+    scaling:float = None,
+    offset:float = None,
+    flip_x:bool = False,
+    flip_y:bool = False,
+    flip_z:bool = False,
+    uid_org_root:str = None,
+    creator_uid:str = None,
+    creator_uid_names:list = None,
+    attributes_from_base:list = None,
+    manufacturer:str = '',
+    analysis_type:str = '',
+    modality:str = 'qMRI analysis',
+    map_units:str = 'normalized',
+    image_type:list = [],
+    software_versions:list = None,
+    LUT_explanation:str = None,
+    coding_scheme_designator:str = 'UCUM'):
     '''
     '''
     #Load the dicom template, we only need to do this once,
     #then reuse for all nifti images
-    if type(dicom_im) == str:
-        dicom_im = pydicom.dcmread(dicom_im)
+    if type(dicom_base) == str:
+        dicom_base = pydicom.dcmread(dicom_base)
 
     #Get list of NIFTI images
     nii_list = \
@@ -257,7 +420,7 @@ def convert_nifti_dir(nifti_dir:str, dicom_im:str,
 
     #Get series start if not set
     if series_start is None:
-        series_start = dicom_im.SeriesNumber * 100 + 1
+        series_start = dicom_base.SeriesNumber * 100 + 1
 
     #If time-series, create single dicom dir
     if time_series:
@@ -285,7 +448,11 @@ def convert_nifti_dir(nifti_dir:str, dicom_im:str,
             series_number = series_start + i_im * series_step
 
         #Convert image
-        converted_slices = convert_nifti(nii_im, dicom_im, dcm_dir,
+        converted_slices = convert_nifti(
+            nii_im, 
+            dicom_base, 
+            dcm_dir,
+            uid_org_root = uid_org_root,
             series_name = series_name, 
             series_number = series_number,
             slice_name = slice_name, 
@@ -302,7 +469,18 @@ def convert_nifti_dir(nifti_dir:str, dicom_im:str,
             offset = offset,
             flip_x = flip_x,
             flip_y = flip_y,
-            flip_z = flip_z)
+            flip_z = flip_z,
+            creator_uid = creator_uid,
+            creator_uid_names = creator_uid_names,
+            attributes_from_base = attributes_from_base,
+            manufacturer = manufacturer,
+            analysis_type = analysis_type,
+            modality = modality,
+            map_units = map_units,
+            image_type = image_type,
+            software_versions = software_versions,
+            LUT_explanation = LUT_explanation,
+            coding_scheme_designator = coding_scheme_designator)
 
         if time_series:
             #Increment the start_index by the number of slices converted

@@ -970,7 +970,15 @@ def analyze_from_nibabel(filename, output_type = None):
     hdr_data.SMin           = None
 
     #Set the sform matrix
-    hdr_data.SformMatrix = hdr.get_sform()
+    sform_mat = hdr.get_sform(coded = True)[0]
+    if sform_mat is not None:
+        hdr_data.SformMatrix = sform_mat
+    else:
+        qform_mat = hdr.get_qform(coded = True)[0]
+        if qform_mat is not None:
+            hdr_data.SformMatrix = qform_mat
+        else:
+            hdr_data.SformMatrix = np.eye(4)
     
     #Now cast to out datatype (leave unchanged if output_type is None)
     if output_type is not None:
