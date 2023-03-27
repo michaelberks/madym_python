@@ -251,9 +251,11 @@ class QbiRunner():
         
         if options.archive_dir is not None and options.overwrite and os.path.exists(options.output_dir):
             if options.archive_dir == 'timestamp':
-                options.archive_dir = options.output_dir + datetime.today().strftime('_%Y%m%d_%H%M%S')
+                options.archive_dir = options.output_dir + datetime.today().strftime('_bak%Y%m%d_%H%M%S')
             else:
                 options.archive_dir = os.path.join(options.data_dir, options.archive_dir)
+            print('Output folder exists and archiving is on: '
+                  f'moving {options.data_dir} to {options.archive_dir}')
             os.rename(options.output_dir, options.archive_dir)
 
         os.makedirs(options.output_dir, exist_ok = options.overwrite)
