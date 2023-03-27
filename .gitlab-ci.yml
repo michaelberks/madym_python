@@ -40,8 +40,8 @@ pages:
     - /^release-.*$/
 
 fetch-semantic-version:
-  # Requires Node >= 14.17 version
-  image: node:16
+  # Requires Node >= 18 version
+  image: node:19
   stage: fetch-version
   only:
     refs:
