@@ -192,6 +192,10 @@ class QbiRunner():
         #Overwrite flag
         self.parser.add('--overwrite', type=bool_option, nargs='?', default=True, const = True,
             help='Flag to allow overwriting previous output')
+
+        #Archive existing work
+        self.parser.add('--archive_dir', type=str, nargs='?', default=None,
+            help='Name to archive existing output folder. If set to timestamp, will append a timestamp to current output')
         
         #Name of program log
         self.parser.add('--program_log', type=str, nargs='?', default='_program_log',
@@ -243,8 +247,15 @@ class QbiRunner():
         #Set up output folder and program log
         if options.output_dir is None:
             options.output_dir = fun.__name__ + '_output'
-
         options.output_dir = os.path.join(options.data_dir, options.output_dir)
+        
+        if options.archive_dir is not None and options.overwrite and os.path.exists(options.output_dir):
+            if options.archive_dir == 'timestamp':
+                options.archive_dir = options.output_dir + datetime.today().strftime('_%Y%m%d_%H%M%S')
+            else:
+                options.archive_dir = os.path.join(options.data_dir, options.archive_dir)
+            os.rename(options.output_dir, options.archive_dir)
+
         os.makedirs(options.output_dir, exist_ok = options.overwrite)
 
         #Get function args from options namespace
