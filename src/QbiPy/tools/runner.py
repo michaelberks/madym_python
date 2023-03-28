@@ -167,9 +167,8 @@ import configargparse
 #----------------------------------------------
 class QbiRunner():
     def __init__(self, description = None):
-        '''_summary_
-
-        _extended_summary_
+        '''Initialise QbiRunner class, creating the ArgParser member and setting
+        generic input options
 
         Parameters
         ----------
@@ -182,9 +181,8 @@ class QbiRunner():
     
     #---------------------------------------------
     def set_generic_options(self):
-        '''_summary_
-
-        _extended_summary_
+        '''Define set of generic options that all function that use the runner
+        will inherit
         '''
         #Config file
         self.parser.add('--config', required=False, is_config_file=True,
@@ -237,9 +235,7 @@ class QbiRunner():
         
     #----------------------------------------------
     def parse_args(self, args = None):
-        '''_summary_
-
-        _extended_summary_
+        '''Parse args from command-line and/or config file
 
         Parameters
         ----------
@@ -409,9 +405,7 @@ def run_with_logging(options, args, fun):
 
 #-----------------------------------------------
 def archive_existing_output(data_dir, archive_dir, output_dir, output_list):
-    '''_summary_
-
-    _extended_summary_
+    '''Move any existing files and folders inside output_dir to an archive_dir
 
     Parameters
     ----------
