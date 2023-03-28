@@ -248,24 +248,17 @@ class QbiRunner():
         if options.output_dir is None:
             options.output_dir = fun.__name__ + '_output'
         options.output_dir = os.path.join(options.data_dir, options.output_dir)
-        
-        if options.archive_dir is not None and options.overwrite and os.path.exists(options.output_dir):
-            if options.archive_dir == 'timestamp':
-                options.archive_dir = options.output_dir + datetime.today().strftime('_bak%Y%m%d_%H%M%S')
-            else:
-                options.archive_dir = os.path.join(options.data_dir, options.archive_dir)
-            print('Output folder exists and archiving is on: '
-                  f'moving {options.data_dir} to {options.archive_dir}')
-            os.rename(options.output_dir, options.archive_dir)
-
         os.makedirs(options.output_dir, exist_ok = options.overwrite)
+
+        #Get list of files in output dir for archiving
+        options.output_list = os.listdir(options.output_dir)
 
         #Get function args from options namespace
         args = get_function_args(fun, options)
 
         #If user set no log, then just run the function
         if options.no_log:
-            success = run_catch(args, fun)
+            success = run_catch(options, args, fun)
         else:
             success = run_with_logging(options, args, fun)
 
@@ -279,13 +272,17 @@ class QbiRunner():
         return exit_code
 
 #-----------------------------------------------
-def run_catch(args, fun):
+def run_catch(options, args, fun):
     '''
     Trying running fun with input **args. If an exception is raised,
     catch it, print it and return False.
 
     If the function runs to completion, return true.
     '''
+    #Do archiving here, so it get logged correctly
+    archive_existing_output(
+        options.data_dir, options.archive_dir, options.output_dir, options.output_list)
+
     try:
         fun(**args)
         success = True
@@ -336,7 +333,7 @@ def run_with_logging(options, args, fun):
         #Run the function within the context of stdout and stderr being
         #redirected to the program log
         with redirect_stderr(program_log), redirect_stdout(program_log):
-            success = run_catch(args, fun)
+            success = run_catch(options, args, fun)
 
         #Finalise the program log
         finalise_log(program_log, success)
@@ -347,6 +344,26 @@ def run_with_logging(options, args, fun):
 
     return success
 
+#-----------------------------------------------
+def archive_existing_output(data_dir, archive_dir, output_dir, output_list):
+    if archive_dir is None or not output_list:
+        return
+
+    if archive_dir == 'timestamp':
+        archive_dir = os.path.join(
+            output_dir, 
+            datetime.today().strftime('_archive%Y%m%d_%H%M%S'))
+    else:
+        archive_dir = os.path.join(data_dir, archive_dir)
+
+    print('Output folder exists and archiving is on: '
+            f'moving {data_dir} to {archive_dir}')
+    os.makedirs(archive_dir, exist_ok=False)
+    for obj_name in output_list:
+        if not obj_name.lower().startswith('_archive'):
+            os.rename(
+                os.path.join(output_dir, obj_name), 
+                os.path.join(archive_dir, obj_name))
 #-----------------------------------------------
 def initialise_audit_log(audit_log_path, program_log_path):
     '''
@@ -455,5 +472,3 @@ def bool_option(v):
         return False
     else:
         raise configargparse.ArgumentTypeError('Boolean value expected.')
-        
-
