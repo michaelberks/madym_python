@@ -167,14 +167,24 @@ import configargparse
 #----------------------------------------------
 class QbiRunner():
     def __init__(self, description = None):
+        '''_summary_
+
+        _extended_summary_
+
+        Parameters
+        ----------
+        description : _type_, optional
+            _description_, by default None
+        '''
         self.description_ = description
         self.parser = configargparse.ArgParser(description)
         self.set_generic_options()
     
     #---------------------------------------------
     def set_generic_options(self):
-        '''
-        Set-up the generic options for the runner as args in the parser
+        '''_summary_
+
+        _extended_summary_
         '''
         #Config file
         self.parser.add('--config', required=False, is_config_file=True,
@@ -227,15 +237,40 @@ class QbiRunner():
         
     #----------------------------------------------
     def parse_args(self, args = None):
+        '''_summary_
+
+        _extended_summary_
+
+        Parameters
+        ----------
+        args : _type_, optional
+            _description_, by default None
+
+        Returns
+        -------
+        _type_
+            _description_
+        '''
         if args is None:
             args = sys.argv[1:]
         return self.parser.parse_args(args)
 
     #-----------------------------------------------
     def run(self, fun, args = None):
-        '''
-        Run the given function fun inside the runner, setting up an output
+        '''Run the given function fun inside the runner, setting up an output
         directory and program/audit logs
+
+        Parameters
+        ----------
+        fun : _type_
+            _description_
+        args : _type_, optional
+            _description_, by default None
+
+        Returns
+        -------
+        _type_
+            _description_
         '''
         #Parse args (if none set, this will use sys.argv)
         options = self.parse_args(args)
@@ -273,11 +308,26 @@ class QbiRunner():
 
 #-----------------------------------------------
 def run_catch(options, args, fun):
-    '''
-    Trying running fun with input **args. If an exception is raised,
+    '''Trying running fun with input **args. If an exception is raised,
     catch it, print it and return False.
 
     If the function runs to completion, return true.
+
+    _extended_summary_
+
+    Parameters
+    ----------
+    options : _type_
+        _description_
+    args : _type_
+        _description_
+    fun : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
     '''
     #Do archiving here, so it get logged correctly
     archive_existing_output(
@@ -294,8 +344,7 @@ def run_catch(options, args, fun):
 
 #-----------------------------------------------
 def run_with_logging(options, args, fun):
-    '''
-    Run the function fun with inputs **args, creating program, config
+    '''Run the function fun with inputs **args, creating program, config
     and audit logs as specified by the options.
 
     If a program log is created (ie. options.no_log = False) then
@@ -304,6 +353,20 @@ def run_with_logging(options, args, fun):
     fun will be called via run_catch, so any exceptions raised will be
     caught and logged. This function will return True if fun ran to
     completion and False if an exception was caught
+
+    Parameters
+    ----------
+    options : _type_
+        _description_
+    args : _type_
+        _description_
+    fun : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
     '''
     #Need to set-up logging info
 
@@ -346,6 +409,21 @@ def run_with_logging(options, args, fun):
 
 #-----------------------------------------------
 def archive_existing_output(data_dir, archive_dir, output_dir, output_list):
+    '''_summary_
+
+    _extended_summary_
+
+    Parameters
+    ----------
+    data_dir : _type_
+        _description_
+    archive_dir : _type_
+        _description_
+    output_dir : _type_
+        _description_
+    output_list : _type_
+        _description_
+    '''
     if archive_dir is None or not output_list:
         return
 
@@ -366,8 +444,14 @@ def archive_existing_output(data_dir, archive_dir, output_dir, output_list):
                 os.path.join(archive_dir, obj_name))
 #-----------------------------------------------
 def initialise_audit_log(audit_log_path, program_log_path):
-    '''
-    Create a new audit log at the specified path
+    '''Create a new audit log at the specified path
+
+    Parameters
+    ----------
+    audit_log_path : _type_
+        _description_
+    program_log_path : _type_
+        _description_
     '''
     os.makedirs(os.path.dirname(audit_log_path), exist_ok = True)
     with open(audit_log_path, 'wt') as log:
@@ -376,18 +460,30 @@ def initialise_audit_log(audit_log_path, program_log_path):
 
 #-----------------------------------------------
 def finalise_audit_log(audit_log_path, success):
-    '''
-    Finalise the audit log
+    '''Finalise the audit log
+
+    Parameters
+    ----------
+    audit_log_path : _type_
+        _description_
+    success : _type_
+        _description_
     '''
     with open(audit_log_path, 'at') as log:
         finalise_log(log, success)
 
 #-----------------------------------------------
 def finalise_log(log, success):  
-    '''
-    Finalise an open audit/program log with file object log,
+    '''Finalise an open audit/program log with file object log,
     logging the time of completion and whether the function
     exited successfully of raised an exception
+
+    Parameters
+    ----------
+    log : _type_
+        _description_
+    success : _type_
+        _description_
     '''
     if success:
         print(f'{sys.argv[0]} completed successfully.', file=log)
@@ -399,9 +495,13 @@ def finalise_log(log, success):
 
 #-----------------------------------------------
 def initialise_log(log):
-    '''
-    Initialise an open audit/program log with file object log,
+    '''Initialise an open audit/program log with file object log,
     logging the start time, user, host and command-line args
+
+    Parameters
+    ----------
+    log : _type_
+        _description_
     '''
     date_str = datetime.today().strftime('%Y%m%d %H:%M:%S')
     print(f'Log opened at {date_str}', file=log)
@@ -412,10 +512,16 @@ def initialise_log(log):
 
 #-----------------------------------------------
 def write_config_log(options, config_log_path):
-    '''
-    Write the complete set of options (formed from a combination
+    '''Write the complete set of options (formed from a combination
     of command-line, environment variable, config file and defaults)
     to an output file.
+
+    Parameters
+    ----------
+    options : _type_
+        _description_
+    config_log_path : _type_
+        _description_
     '''
     with open(config_log_path, 'wt') as log:
         for option, value in options.__dict__.items():
@@ -423,17 +529,20 @@ def write_config_log(options, config_log_path):
 
 #-----------------------------------------------
 def get_function_args(fun, options):
-    '''
-    Iterate through attributes in a namepsace object and return attributes
+    '''Iterate through attributes in a namepsace object and return attributes
     included in the signature of the given function as a dictionary
 
-    Inputs:
-        fun: function object
+    Parameters
+    ----------
+    fun : function
+        function object
+    options : namespace
+        Simple namepsace object returned from argparse
 
-        options: Simple namepsace object returned from argparse
-
-    Outputs:
-        args_dict: dictionary of attribute/values from options where
+    Returns
+    -------
+    args_dict
+        dictionary of attribute/values from options where
         an attribute is included iff it is a member of fun's signature
     '''
     #Get list of arg names from the given function signature
@@ -451,18 +560,33 @@ def get_function_args(fun, options):
 
 #-----------------------------------------------
 def bool_option(v):
-    '''
-    Convert various string inputs that might be interpreted as yes/no, true/false to bool.
+    '''Convert various string inputs that might be interpreted as yes/no, true/false to bool.
     If input is already a bool, just return itself
+    
     Inputs:
         v : str
             variable to convert to bool
     Notes:
-        'yes', 'true', 't', 'y', '1' convert to True
+        
 
-        'no', 'false', 'f', 'n', '0' convert to False
+    Parameters
+    ----------
+    v : str
+        variable to convert to bool
+
+    Returns
+    -------
+    bool
+        True, 'yes', 'true', 't', 'y', '1' convert to True
+
+        False, 'no', 'false', 'f', 'n', '0' convert to False
 
         Any other input raises an argparse ArgumentTypeError
+
+    Raises
+    ------
+    configargparse.ArgumentTypeError
+        _description_
     '''
     if isinstance(v, bool):
        return v
