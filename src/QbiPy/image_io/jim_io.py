@@ -435,7 +435,7 @@ def write_slices_from_slice_info(fid, slice_info,
     '''    
 
     for slice in slice_info:
-        deleted = 'deleted' in slice and slice['deleted']
+        deleted = slice['deleted'] if 'deleted' in slice else ''
         slice_num = slice['slice']+1
         
         write_slice(fid, slice['roi_xy'], slice_num, slice['colour'], 
@@ -464,7 +464,7 @@ def write_slice_info(fid, contour, slice_no, internal,
     print(f"  Slice={slice_no}", file=fid)
     print(f"  Created  \"{slice_time} Greenwich Mean Time\" by Operator ID=\"{operator}\"", file=fid)
     if deleted:
-        print(f"  Deleted  \"{slice_time} Greenwich Mean Time\" by Operator ID=\"{operator}\"", file=fid)
+        print(f"  Deleted  {deleted}", file=fid)
     print(f"  Statistics: Area={area}; Mean={mean}; Std Dev={std}; Min={min_v}; Max={max_v}", file=fid)
 
 #-----------------------------------------------------------------------------
