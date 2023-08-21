@@ -34,7 +34,8 @@ def test_write_read_jim_roi():
     jim_io.write_jim_roi(jim_roi[1], 0.0, jim_spacing, jim_outpath1)
         
     jim_outpath2 = os.path.join(temp_dir.name, 'jim2.roi')
-    contour_list = [(info['roi_xy'],info['slice']+1) for info in jim_roi[0]]
+    contour_list = [(info['roi_xy'],info['slice']+1) 
+        for info in jim_roi[0] if not 'deleted' in info]
     jim_io.write_jim_roi_from_list(
         contour_list, jim_outpath2, scale=scale, offset=offset)
 
@@ -53,13 +54,14 @@ def test_write_read_jim_roi():
 
     temp_dir.cleanup()
 
-    assert len(jim_roi[0]) == len(jim_roi1[0])
-    assert len(jim_roi[0]) == len(jim_roi2[0])
+    assert len(jim_roi[0]) == len(jim_roi1[0])+1
+    assert len(jim_roi[0]) == len(jim_roi2[0])+1
     assert len(jim_roi[0]) == len(jim_roi3[0])
 
     def overlap(r1, r2):
         return np.sum(r1 & r2) / np.sum(r1 | r2)
 
-    assert overlap(jim_roi[1], jim_roi1[1]) > 0.5
+    assert overlap(jim_roi[1], jim_roi1[1]) > 0.75
     np.testing.assert_equal(jim_roi[1], jim_roi2[1])
     np.testing.assert_equal(jim_roi[1], jim_roi3[1])
+    
