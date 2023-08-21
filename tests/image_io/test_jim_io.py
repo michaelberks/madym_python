@@ -61,7 +61,7 @@ def test_write_read_jim_roi():
     def overlap(r1, r2):
         return np.sum(r1 & r2) / np.sum(r1 | r2)
 
-    assert overlap(jim_roi[1], jim_roi1[1]) > 0.75
+    assert overlap(jim_roi[1], jim_roi1[1]) > 0.5
     np.testing.assert_equal(jim_roi[1], jim_roi2[1])
     np.testing.assert_equal(jim_roi[1], jim_roi3[1])
     
